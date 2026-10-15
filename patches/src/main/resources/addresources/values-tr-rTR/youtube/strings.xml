@@ -1351,4 +1351,11 @@ Sınırlama: Eski stil 'Diğer videolar' katmanına geri döner"</string>
   <string name="morphe_player_icon_style_entry_bold">Kalın</string>
   <string name="morphe_player_icon_style_entry_custom">Özel</string>
   <string name="morphe_shorts_icon_style_title">Shorts simge stili</string>
+
+    <string name="morphe_watch_later_shortcuts_title">Daha sonra izle kısayolları</string>
+    <string name="morphe_watch_later_shortcuts_summary">Video kartlarının sol üstünde Daha sonra izle simgesi ve alt menüde Shorts yerine Daha sonra izle düğmesi gösterilir.</string>
+    <string name="morphe_watch_later_shortcuts_label">Daha sonra izle</string>
+    <string name="morphe_watch_later_shortcuts_add">Daha sonra izle listesine ekle</string>
+    <string name="morphe_watch_later_shortcuts_saved">Daha sonra izle listesine eklendi</string>
+    <string name="morphe_watch_later_shortcuts_open_error">Daha sonra izle listesi açılamadı.</string>
 </resources>

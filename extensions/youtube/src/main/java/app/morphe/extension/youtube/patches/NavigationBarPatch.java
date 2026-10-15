@@ -109,6 +109,10 @@ public final class NavigationBarPatch {
      * Injection point.
      */
     public static void navigationTabCreated(NavigationBar.NavigationButton button, View tabView) {
+        if (button == NavigationBar.NavigationButton.SHORTS
+                && WatchLaterShortcutsPatch.bindNavigationTab(tabView)) {
+            return;
+        }
         if (SHOW_SEARCH_BUTTON && button == NavigationBar.NavigationButton.SEARCH) {
             Utils.runOnMainThread(() -> tabView.setOnClickListener(openSearchBarOnClickListener));
             return;
@@ -168,7 +172,7 @@ public final class NavigationBarPatch {
      * Injection point.
      */
     public static boolean useAnimatedNavigationButtons(boolean original) {
-        return Settings.NAVIGATION_BAR_ANIMATIONS.get();
+        return !WatchLaterShortcutsPatch.isEnabled() && Settings.NAVIGATION_BAR_ANIMATIONS.get();
     }
 
     /**
