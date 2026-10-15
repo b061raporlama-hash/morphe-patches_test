@@ -1498,4 +1498,11 @@ Limitation: Reverts to old style \'More videos\' overlay"</string>
     <string name="morphe_player_icon_style_entry_sharp" translatable="false">Sharp</string>
     <string name="morphe_player_icon_style_entry_custom">Custom</string>
     <string name="morphe_shorts_icon_style_title">Shorts icon style</string>
+
+    <string name="morphe_watch_later_shortcuts_title">Watch later shortcuts</string>
+    <string name="morphe_watch_later_shortcuts_summary">Show a Watch later button on video thumbnails and replace the Shorts navigation button with Watch later.</string>
+    <string name="morphe_watch_later_shortcuts_label">Watch later</string>
+    <string name="morphe_watch_later_shortcuts_add">Save to Watch later</string>
+    <string name="morphe_watch_later_shortcuts_saved">Saved to Watch later</string>
+    <string name="morphe_watch_later_shortcuts_open_error">Could not open Watch later.</string>
 </resources>

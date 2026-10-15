@@ -11,6 +11,10 @@ import static app.morphe.extension.shared.StringRef.str;
 
 import android.text.TextUtils;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.shared.innertube.utils.AuthUtils;
@@ -18,48 +22,65 @@ import app.morphe.extension.youtube.patches.utils.requests.SaveToWatchLaterReque
 
 @SuppressWarnings("unused")
 public final class SaveToWatchLaterPatch {
-
-    /**
-     * If the player is not active, the layout may break.
-     * Use it only when it is guaranteed to be used in situations where the player is active.
-     */
-    private static volatile SaveToWatchLaterRequest saveToWatchLaterRequest;
+    private static final Set<String> pendingVideos = ConcurrentHashMap.newKeySet();
 
     public static boolean isPatchIncluded() {
         return false; // Modified during patching.
     }
 
     public static void saveVideo(String videoId) {
-        // Prevent a new request until the previous (if exists) is not done.
-        if (saveToWatchLaterRequest != null && !saveToWatchLaterRequest.fetchIsDone()) {
-            return;
-        }
+        saveVideo(videoId, success -> {});
+    }
+
+    /** The callback always runs on the main thread; only a confirmed response counts as saved. */
+    public static void saveVideo(String videoId, Consumer<Boolean> callback) {
         if (AuthUtils.isNotLoggedIn()) {
             Utils.showToastShort(str("morphe_queue_manager_check_failed_auth"));
+            complete(callback, false);
             return;
         }
         if (TextUtils.isEmpty(videoId)) {
             Utils.showToastShort(str("morphe_queue_manager_check_failed_video_id"));
+            complete(callback, false);
+            return;
+        }
+        // Suppress repeated taps on the same card without dropping saves of other videos.
+        if (!pendingVideos.add(videoId)) {
+            complete(callback, false);
             return;
         }
         try {
             Utils.runOnBackgroundThread(() -> {
-                saveToWatchLaterRequest = SaveToWatchLaterRequest.fetchRequest(
-                        videoId,
-                        AuthUtils.getRequestHeader()
-                );
-                Boolean result = saveToWatchLaterRequest.getResult();
-                if (result != null) {
-                    Utils.showToastShort(str(result
-                            ? "morphe_save_to_watch_later_success_toast"
-                            : "morphe_save_to_watch_later_already_exists_toast"));
-                } else {
-                    Logger.printDebug(() -> "Could not save video, save to Watch later results are null: " + videoId);
+                boolean success = false;
+                try {
+                    SaveToWatchLaterRequest request = SaveToWatchLaterRequest.fetchRequest(
+                            videoId, AuthUtils.getRequestHeader());
+                    Boolean result = request.getResult();
+                    success = result != null;
+                    if (success) {
+                        Utils.showToastShort(str(result
+                                ? "morphe_save_to_watch_later_success_toast"
+                                : "morphe_save_to_watch_later_already_exists_toast"));
+                    } else {
+                        Utils.showToastShort(str("morphe_save_to_watch_later_error_toast"));
+                    }
+                } catch (Exception ex) {
+                    Logger.printException(() -> "Could not save video to Watch later", ex);
+                    Utils.showToastShort(str("morphe_save_to_watch_later_error_toast"));
+                } finally {
+                    pendingVideos.remove(videoId);
+                    complete(callback, success);
                 }
             });
         } catch (Exception ex) {
-            Logger.printDebug(() -> "Could not fetch save to Watch later request", ex);
+            pendingVideos.remove(videoId);
+            Logger.printException(() -> "Could not schedule Watch later request", ex);
             Utils.showToastShort(str("morphe_save_to_watch_later_error_toast"));
+            complete(callback, false);
         }
+    }
+
+    private static void complete(Consumer<Boolean> callback, boolean success) {
+        Utils.runOnMainThread(() -> callback.accept(success));
     }
 }
