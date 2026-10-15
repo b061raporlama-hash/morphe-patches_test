@@ -85,8 +85,11 @@ public final class WatchLaterShortcutsPatch {
     /** Carries identity with mounted text, including when Litho reuses cached spans. */
     public static CharSequence onLithoTextLoaded(ContextInterface context, CharSequence text) {
         if (text == null || text.length() == 0) return text;
-        String id = isEnabled() ? contexts.get(context) : null;
-        if (id == null && isEnabled()) id = pathContexts.get(context.patch_getPathBuilder());
+        String path = context.patch_getPathBuilder().toString();
+        boolean cardContext = isEnabled() && (path.contains("video_with_context.e")
+                || path.contains("video_lockup_with_attachment.e") || path.contains("compact_video.e"));
+        String id = cardContext ? contexts.get(context) : null;
+        if (id == null && cardContext) id = pathContexts.get(context.patch_getPathBuilder());
         VideoIdSpan[] old = text instanceof Spanned spanned
                 ? spanned.getSpans(0, text.length(), VideoIdSpan.class) : new VideoIdSpan[0];
         if (id == null && old.length == 0) return text;
@@ -321,6 +324,8 @@ public final class WatchLaterShortcutsPatch {
     private static final class ClockDrawable extends Drawable {
         final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         boolean saved;
+        ColorStateList tint;
+        int alpha = 255;
 
         void setSaved(boolean saved) {
             if (this.saved != saved) {
@@ -334,7 +339,8 @@ public final class WatchLaterShortcutsPatch {
             int save = canvas.save();
             canvas.translate(bounds.left, bounds.top);
             canvas.scale(bounds.width() / 24f, bounds.height() / 24f);
-            paint.setColor(Color.WHITE);
+            paint.setColor(tint == null ? Color.WHITE : tint.getColorForState(getState(), tint.getDefaultColor()));
+            paint.setAlpha(alpha);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(1.8f);
             paint.setStrokeCap(Paint.Cap.ROUND);
@@ -349,7 +355,10 @@ public final class WatchLaterShortcutsPatch {
             canvas.restoreToCount(save);
         }
 
-        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); invalidateSelf(); }
+        @Override public void setAlpha(int alpha) { this.alpha = alpha; invalidateSelf(); }
+        @Override public void setTintList(ColorStateList tint) { this.tint = tint; invalidateSelf(); }
+        @Override public boolean isStateful() { return tint != null && tint.isStateful(); }
+        @Override protected boolean onStateChange(int[] state) { invalidateSelf(); return true; }
         @Override public void setColorFilter(ColorFilter filter) { paint.setColorFilter(filter); invalidateSelf(); }
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
         @Override public int getIntrinsicWidth() { return 24; }
