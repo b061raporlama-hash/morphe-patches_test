@@ -268,18 +268,27 @@ public final class WatchLaterShortcutsPatch {
         }
 
         /** The measured LithoView may contain several cards, mounted as nested ComponentHosts. */
-        private void findCards(View view, Set<View> visited, List<View> candidates) {
-            if (!visited.add(view) || !view.isShown()) return;
+        private boolean findCards(View view, Map<View, Boolean> visited, List<View> candidates) {
+            Boolean known = visited.get(view);
+            if (known != null) return known;
+            if (!view.isShown()) {
+                visited.put(view, false);
+                return false;
+            }
+            boolean nestedCard = false;
             if (view instanceof ViewGroup group) {
                 for (int i = 0; i < group.getChildCount(); i++) {
-                    findCards(group.getChildAt(i), visited, candidates);
+                    nestedCard |= findCards(group.getChildAt(i), visited, candidates);
                 }
             }
             // Children first: use the smallest full card, never its entire multi-card feed.
-            if (view instanceof ComponentHost && view.getWidth() >= Math.max(dp(view, 160), layer.getWidth() * 3 / 4)
-                    && view.getHeight() >= view.getWidth() * 9 / 16 + dp(view, 16)) {
-                candidates.add(view);
-            }
+            boolean fullCard = view instanceof ComponentHost
+                    && view.getWidth() >= Math.max(dp(view, 160), layer.getWidth() * 3 / 4)
+                    && view.getHeight() >= view.getWidth() * 9 / 16 + dp(view, 16)
+                    && view.getHeight() <= view.getWidth() * 9 / 16 + dp(view, 160);
+            if (fullCard && !nestedCard) candidates.add(view);
+            visited.put(view, fullCard || nestedCard);
+            return fullCard || nestedCard;
         }
 
         boolean draw() {
@@ -299,7 +308,7 @@ public final class WatchLaterShortcutsPatch {
                     }
                 }
                 if (!show) return true;
-                Set<View> visited = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+                Map<View, Boolean> visited = new java.util.IdentityHashMap<>();
                 List<View> candidates = new ArrayList<>();
                 for (View host : hosts) {
                     if (host.isAttachedToWindow()) findCards(host, visited, candidates);
