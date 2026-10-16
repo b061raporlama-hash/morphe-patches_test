@@ -2399,7 +2399,7 @@ class PatchBundleRepository(
             name = SOURCE_NAME,
             displayName = null,
             versionHash = null,
-            source = Source.Remote(Url("https://github.com/b061raporlama-hash/morphe-patches_test/releases/latest/download/cep-patches-bundle.json")),
+            source = Source.Remote(Url(SOURCE_RELEASE_JSON_URL)),
             autoUpdate = true,
             enabled = true,
             sortOrder = 0,

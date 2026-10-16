@@ -18,6 +18,7 @@ const val tag = "Cep Patcher"
 const val SOURCE_NAME = "Cep Patches"
 const val MANAGER_REPO_URL = "https://github.com/b061raporlama-hash/morphe-patches_test"
 const val SOURCE_REPO_URL = MANAGER_REPO_URL
+const val SOURCE_RELEASE_JSON_URL = "https://github.com/b061raporlama-hash/morphe-patches_test/releases/latest/download/cep-patches-bundle.json"
 const val MORPHE_API_URL = "https://api.morphe.software"
 const val MORPHE_WEBSITE_URL = "https://morphe.software"
 const val COMMUNITY_PATCHES_URL = "https://morphe-patches.software"

@@ -535,7 +535,7 @@ class MorpheAPI(
      * Source priority: static JSON → Morphe API (fallback).
      */
     suspend fun getPatchesUpdate(usePrerelease: Boolean): APIResponse<MorpheAsset> =
-        getPatchesFromJson(false)
+        rawFileRequest<MorpheAsset>(SOURCE_RELEASE_JSON_URL)
 
     /**
      * Fetches the most recent GitHub release that passes [matcher] for its assets.
