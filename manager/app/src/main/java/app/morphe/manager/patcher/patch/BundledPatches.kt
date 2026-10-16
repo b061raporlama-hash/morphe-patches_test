@@ -10,8 +10,8 @@ import io.github.z4kn4fein.semver.Version
 
 /** Atomic installation also satisfies Android 14+'s read-only dynamic code requirement. */
 object BundledPatches {
-    fun version(input: InputStream): String = input.use { stream ->
-        ZipInputStream(stream).use { zip ->
+    fun version(input: InputStream): String {
+        ZipInputStream(input).use { zip ->
             var entry = zip.nextEntry
             while (entry != null) {
                 if (entry.name.equals("META-INF/MANIFEST.MF", ignoreCase = true)) {

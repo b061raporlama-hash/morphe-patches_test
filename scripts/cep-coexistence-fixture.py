@@ -14,6 +14,7 @@ source = out / "Provider.java"
 resources = out / "res"
 (resources / "values").mkdir(parents=True, exist_ok=True)
 (resources / "values" / "strings.xml").write_text('<resources><string name="app_name">Coexistence fixture</string></resources>')
+(resources / "values" / "ids.xml").write_text('<resources><item type="id" name="fixture_view"/></resources>')
 source.write_text("""package probe;
 public final class Provider extends android.content.ContentProvider {
  public boolean onCreate() { return true; }
