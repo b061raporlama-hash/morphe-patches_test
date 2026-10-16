@@ -75,6 +75,7 @@ class WatchLaterRegression {
                     import app.morphe.extension.shared.innertube.utils.AuthUtils;
                     import app.morphe.extension.youtube.patches.SaveToWatchLaterPatch;
                     import app.morphe.extension.youtube.patches.watchlater.WatchLaterVideoId;
+                    import app.morphe.extension.youtube.patches.watchlater.WatchLaterCardIdentity;
                     import app.morphe.extension.youtube.patches.utils.requests.SaveToWatchLaterRequest;
                     public class Scenario {
                         static int assertions;
@@ -98,6 +99,41 @@ class WatchLaterRegression {
                             check(id("https://i.ytimg.com/vi/abcdefghijkl/a.jpg") == null);
                             check(WatchLaterVideoId.fromBuffer(null) == null);
                             check(id("") == null);
+                            var cards = new WatchLaterCardIdentity();
+                            String card = "feed|home_video_with_context.e|hash-A|";
+                            String child = card + "ContainerType|TextType|";
+                            cards.observe(card, "abcdefghijk");
+                            cards.observe(new StringBuilder(child), null);
+                            check("abcdefghijk".equals(cards.resolve(new StringBuilder(child))));
+                            cards.observe("feed|home_video_with_context.e|hash-B|", "12345678901");
+                            check("12345678901".equals(cards.resolve("feed|home_video_with_context.e|hash-B|TextType|")));
+                            check("abcdefghijk".equals(cards.resolve(child)));
+                            cards.observe(child, "12345678901");
+                            check(cards.resolve(child) == null);
+                            cards.observe(card, "12345678901");
+                            check(cards.resolve(child) == null); // A shared template is ambiguous.
+                            cards.observe(card, null);
+                            check(cards.resolve(child) == null);
+                            cards.observe(child, "abcdefghijk");
+                            check(cards.resolve(child) == null);
+                            cards.observe("feed|home_video_with_context.e|TextType|", "abcdefghijk");
+                            check(cards.resolve("feed|home_video_with_context.e|TextType|") == null);
+                            check(cards.resolve("feed|shorts_shelf.e|hash-A|TextType|") == null);
+                            cards.observe("feed|home_video_with_context.e|hash-C", "abcdefghijk");
+                            check("abcdefghijk".equals(cards.resolve("feed|home_video_with_context.e|hash-C|TextType|")));
+                            Object rootContext = new Object(), childContext = new Object();
+                            StringBuilder sharedPath = new StringBuilder("feed|video_lockup_with_attachment.eml-fe|c0c4a49b6544b5fb|");
+                            cards.observe(rootContext, sharedPath, sharedPath, "abcdefghijk");
+                            sharedPath.append("ContainerType|TextType|");
+                            cards.observe(childContext, sharedPath, sharedPath, null);
+                            check("abcdefghijk".equals(cards.resolve(childContext, sharedPath, sharedPath)));
+                            String sameTemplate = "feed|video_lockup_with_attachment.eml-fe|c0c4a49b6544b5fb|";
+                            StringBuilder otherPath = new StringBuilder(sameTemplate);
+                            cards.observe(new Object(), otherPath, otherPath, "12345678901");
+                            check("12345678901".equals(cards.resolve(new Object(), otherPath, otherPath)));
+                            check("abcdefghijk".equals(cards.resolve(childContext, sharedPath, sharedPath)));
+                            check(cards.resolve(new StringBuilder(sameTemplate + "TextType|")) == null);
+                            check(cards.resolve(rootContext, sharedPath, "feed|video_lockup_with_attachment.eml-fe|DIFFERENT|TextType|") == null);
                             save("abcdefghijk"); save("abcdefghijk"); save("12345678901");
                             check(Utils.workers.size() == 2);
                             Utils.drain();
@@ -135,6 +171,7 @@ class WatchLaterRegression {
             Path source = Path.of("extensions/youtube/src/main/java/app/morphe/extension/youtube/patches");
             compile.add(source.resolve("SaveToWatchLaterPatch.java").toString());
             compile.add(source.resolve("watchlater/WatchLaterVideoId.java").toString());
+            compile.add(source.resolve("watchlater/WatchLaterCardIdentity.java").toString());
             var compiler = ToolProvider.getSystemJavaCompiler();
             if (compiler == null) throw new IllegalStateException("A JDK is required");
             if (compiler.run(null, null, null, compile.toArray(String[]::new)) != 0) {

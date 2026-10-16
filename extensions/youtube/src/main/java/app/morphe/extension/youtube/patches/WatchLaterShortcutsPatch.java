@@ -30,6 +30,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.facebook.litho.ComponentHost;
+import com.facebook.litho.TextContent;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -48,17 +49,14 @@ import app.morphe.extension.shared.patches.components.ContextInterface;
 import app.morphe.extension.youtube.settings.Settings;
 import app.morphe.extension.youtube.shared.PlayerType;
 import app.morphe.extension.youtube.shared.ShortsPlayerState;
+import app.morphe.extension.youtube.patches.watchlater.WatchLaterCardIdentity;
 
 /** Uses the card's own conversion context; never falls back to the active player. */
 @SuppressWarnings("unused")
 public final class WatchLaterShortcutsPatch {
     private record VideoIdSpan(String videoId) {}
 
-    // Conversion and text creation are multithreaded. Weak keys do not retain old feeds.
-    private static final Map<ContextInterface, String> contexts =
-            Collections.synchronizedMap(new WeakHashMap<>());
-    private static final Map<StringBuilder, String> pathContexts =
-            Collections.synchronizedMap(new WeakHashMap<>());
+    private static final WatchLaterCardIdentity identities = new WatchLaterCardIdentity();
     private static final Map<FrameLayout, WeakReference<Overlay>> overlays = new WeakHashMap<>();
     private static final Map<View, Boolean> observedHosts = new WeakHashMap<>();
 
@@ -72,24 +70,14 @@ public final class WatchLaterShortcutsPatch {
 
     public static void bindContext(ContextInterface context, String videoId) {
         StringBuilder path = context.patch_getPathBuilder();
-        if (videoId == null) {
-            contexts.remove(context);
-            pathContexts.remove(path);
-        } else {
-            contexts.put(context, videoId);
-            // Child conversion contexts may share the card's path builder.
-            pathContexts.put(path, videoId);
-        }
+        identities.observe(context, path, path, videoId);
     }
 
     /** Carries identity with mounted text, including when Litho reuses cached spans. */
     public static CharSequence onLithoTextLoaded(ContextInterface context, CharSequence text) {
         if (text == null || text.length() == 0) return text;
-        String path = context.patch_getPathBuilder().toString();
-        boolean cardContext = isEnabled() && (path.contains("video_with_context.e")
-                || path.contains("video_lockup_with_attachment.e") || path.contains("compact_video.e"));
-        String id = cardContext ? contexts.get(context) : null;
-        if (id == null && cardContext) id = pathContexts.get(context.patch_getPathBuilder());
+        StringBuilder path = context.patch_getPathBuilder();
+        String id = isEnabled() ? identities.resolve(context, path, path) : null;
         VideoIdSpan[] old = text instanceof Spanned spanned
                 ? spanned.getSpans(0, text.length(), VideoIdSpan.class) : new VideoIdSpan[0];
         if (id == null && old.length == 0) return text;
@@ -184,7 +172,8 @@ public final class WatchLaterShortcutsPatch {
     private static void collectVideoIds(View view, Set<String> ids) {
         if (ids.size() > 1) return;
         if (view instanceof ComponentHost host) {
-            for (CharSequence text : host.getTextContent().getTextItems()) {
+            TextContent content = host.getTextContent();
+            if (content != null) for (CharSequence text : content.getTextItems()) {
                 if (!(text instanceof Spanned spanned)) continue;
                 for (VideoIdSpan span : spanned.getSpans(0, text.length(), VideoIdSpan.class)) {
                     ids.add(span.videoId());
@@ -251,6 +240,7 @@ public final class WatchLaterShortcutsPatch {
         final WeakReference<FrameLayout> root;
         final FrameLayout layer;
         final List<Card> cards = new ArrayList<>();
+        final Set<View> hosts = Collections.newSetFromMap(new WeakHashMap<>());
         final Rect visible = new Rect();
         final int[] rootLocation = new int[2];
         final int[] hostLocation = new int[2];
@@ -259,6 +249,7 @@ public final class WatchLaterShortcutsPatch {
             this.root = new WeakReference<>(root);
             layer = new FrameLayout(root.getContext());
             layer.setClickable(false);
+            layer.setElevation(dp(root, 16));
             layer.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
             layer.setTag(this); // Root owns the controller; the static map holds only a weak reference.
             root.addView(layer, new FrameLayout.LayoutParams(-1, -1));
@@ -266,8 +257,29 @@ public final class WatchLaterShortcutsPatch {
         }
 
         void track(View host) {
-            for (Card card : cards) if (card.host.get() == host) return;
-            cards.add(new Card(host, layer));
+            hosts.add(host);
+        }
+
+        private Card cardFor(View host) {
+            for (Card card : cards) if (card.host.get() == host) return card;
+            Card card = new Card(host, layer);
+            cards.add(card);
+            return card;
+        }
+
+        /** The measured LithoView may contain several cards, mounted as nested ComponentHosts. */
+        private void findCards(View view, Set<View> visited, List<View> candidates) {
+            if (!visited.add(view) || !view.isShown()) return;
+            if (view instanceof ViewGroup group) {
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    findCards(group.getChildAt(i), visited, candidates);
+                }
+            }
+            // Children first: use the smallest full card, never its entire multi-card feed.
+            if (view instanceof ComponentHost && view.getWidth() >= Math.max(dp(view, 160), layer.getWidth() * 3 / 4)
+                    && view.getHeight() >= view.getWidth() * 9 / 16 + dp(view, 16)) {
+                candidates.add(view);
+            }
         }
 
         boolean draw() {
@@ -276,24 +288,26 @@ public final class WatchLaterShortcutsPatch {
                 boolean show = window != null && window.hasWindowFocus() && isEnabled()
                         && !PlayerType.getCurrent().isMaximizedOrFullscreen() && !ShortsPlayerState.isOpen();
                 if (window != null) window.getLocationOnScreen(rootLocation);
-                List<Rect> occupied = new ArrayList<>();
                 for (Iterator<Card> iterator = cards.iterator(); iterator.hasNext();) {
                     Card card = iterator.next();
                     View host = card.host.get();
+                    card.videoId = null;
+                    card.button.setVisibility(View.GONE);
                     if (host == null || !host.isAttachedToWindow()) {
                         layer.removeView(card.button);
                         iterator.remove();
-                        continue;
                     }
-                    String id = show && host.isShown() ? videoId((ComponentHost) host) : null;
-                    // Full-width, landscape feed cards. Never guess bounds for compact rows or Shorts.
-                    boolean fullCard = host.getWidth() >= dp(host, 160)
-                            && host.getHeight() >= host.getWidth() * 9 / 16 + dp(host, 16);
-                    if (id == null || !fullCard || !host.getGlobalVisibleRect(visible)) {
-                        card.videoId = null;
-                        card.button.setVisibility(View.GONE);
-                        continue;
-                    }
+                }
+                if (!show) return true;
+                Set<View> visited = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+                List<View> candidates = new ArrayList<>();
+                for (View host : hosts) {
+                    if (host.isAttachedToWindow()) findCards(host, visited, candidates);
+                }
+                List<Rect> occupied = new ArrayList<>();
+                for (View host : candidates) {
+                    String id = videoId((ComponentHost) host);
+                    if (id == null || !host.getGlobalVisibleRect(visible)) continue;
                     host.getLocationOnScreen(hostLocation);
                     int left = hostLocation[0] + dp(host, 8);
                     int top = hostLocation[1] + dp(host, 8);
@@ -301,11 +315,10 @@ public final class WatchLaterShortcutsPatch {
                     boolean overlaps = false;
                     for (Rect previous : occupied) overlaps |= Rect.intersects(previous, target);
                     if (!visible.contains(target) || overlaps) {
-                        card.videoId = null;
-                        card.button.setVisibility(View.GONE);
                         continue;
                     }
                     occupied.add(target);
+                    Card card = cardFor(host);
                     card.videoId = id;
                     card.button.setEnabled(!id.equals(card.pendingVideoId));
                     card.updateIcon();

@@ -382,3 +382,31 @@ androidComponents {
         variant.sources.manifests.addGeneratedManifestFile(generateLauncherIcons, GenerateLauncherIconsTask::manifestFile)
     }
 }
+
+// Exercise the actual extension UI in Android instrumentation. Only the patch-time inclusion
+// constant is replaced; Android views, spans, layout and production save dispatch run unchanged.
+val watchLaterTestSources = tasks.register<Sync>("prepareWatchLaterTestSources") {
+    into(layout.buildDirectory.dir("generated/watchLaterTest/java"))
+    from("../../extensions/youtube/src/main/java") {
+        include("app/morphe/extension/youtube/patches/WatchLaterShortcutsPatch.java")
+        include("app/morphe/extension/youtube/patches/SaveToWatchLaterPatch.java")
+        include("app/morphe/extension/youtube/patches/watchlater/*.java")
+    }
+    from("../../extensions/shared-youtube/library/src/main/java") {
+        include("app/morphe/extension/shared/patches/components/ContextInterface.java")
+    }
+    from("../../extensions/shared-youtube/stub/src/main/java") {
+        include("com/facebook/litho/TextContent.java")
+    }
+    filter { line: String ->
+        line.replace("return false; // Modified during patching.",
+            "return true; // Instrumentation fixture: patch-time inclusion.")
+    }
+}
+android.sourceSets.getByName("androidTest").java.apply {
+    srcDir(layout.buildDirectory.dir("generated/watchLaterTest/java").get().asFile)
+    srcDir("../../tests/watchlater/android")
+}
+tasks.matching { it.name == "preDebugAndroidTestBuild" }.configureEach {
+    dependsOn(watchLaterTestSources)
+}

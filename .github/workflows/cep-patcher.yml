@@ -13,6 +13,7 @@ on:
       - 'gradle.properties'
       - '.github/workflows/cep-patcher.yml'
       - 'scripts/cep-*'
+      - 'tests/watchlater/**'
 
 permissions:
   contents: read
@@ -157,8 +158,9 @@ jobs:
             adb install $(find apks/debug -name '*.apk' | head -1)
             adb install $(find apks/androidTest/debug -name '*.apk' | head -1)
             adb shell am instrument -w io.github.b061raporlama.ceppatcher.debug.test/androidx.test.runner.AndroidJUnitRunner | tee instrumentation.txt
-            grep -q 'OK (2 tests)' instrumentation.txt
+            grep -q 'OK (3 tests)' instrumentation.txt
             ! grep -q 'FAILURES\|INSTRUMENTATION_FAILED\|Process crashed' instrumentation.txt
+            adb exec-out run-as io.github.b061raporlama.ceppatcher.debug cat files/watch-later-overlay.png > watch-later-overlay.png
             adb shell pm path app.morphe.android.youtube > morphe-after.txt
             diff morphe-before.txt morphe-after.txt
             adb shell pm list packages | tr -d '\r' > packages.txt
@@ -176,6 +178,7 @@ jobs:
             packages.txt
             morphe-before.txt
             morphe-after.txt
+            watch-later-overlay.png
 
   publish:
     needs: [build, android-loader]

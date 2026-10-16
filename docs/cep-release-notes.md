@@ -1,5 +1,9 @@
 Cep Patcher is an independent, modified build of Morphe Manager with its own name, application ID and pocket/clock icon. It is not an official Morphe release.
 
+Fixes missing **Watch later shortcuts** clocks on feed cards: child conversion contexts no longer erase their parent's thumbnail identity, copied contexts resolve through the component path/hash, and nested cards are discovered inside the measured Litho host. Mount hosts without text content are tolerated. An Android 15 UI regression exercises the production overlay with two nested cards, recording the correct IDs and updating/hiding clocks on recycling. Mount data and network responses in that test are synthetic; real YouTube feed layouts still need phone verification.
+
+To apply the clock fix, update Cep Patcher, then patch the original supported YouTube APK again with **Watch later shortcuts** selected and install the newly generated **Cep YouTube** APK over the existing one. Updating only Cep Patcher does not modify an already patched YouTube installation. Keep Cep Patcher's existing signing data so its generated APK can update the prior Cep YouTube installation.
+
 YouTube patched with the built-in source now defaults to **`app.cep.android.youtube`**, with **Cep YouTube** as the default Custom branding name. It installs beside `app.morphe.android.youtube` and the original YouTube. Existing Morphe Manager and Morphe YouTube installations can remain installed. GmsCore keeps its existing identity and can be shared.
 
 Upgrade Cep Patcher over the previous version, then patch the original YouTube APK again. Already generated APKs retain their previous package identity. A manager upgrade refreshes an older embedded Cep bundle offline and migrates an explicitly saved old Morphe clone identity for the built-in source; newer downloaded bundles and private clone names are preserved.
