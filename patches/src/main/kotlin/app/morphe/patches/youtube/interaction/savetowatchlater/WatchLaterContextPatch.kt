@@ -5,6 +5,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableClass
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableField.Companion.toMutable
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.shared.misc.litho.context.conversionContextClassDef
@@ -45,6 +46,13 @@ internal fun addWatchLaterScopeCarrier(clazz: MutableClass) {
     }.also { clazz.virtualMethods.add(it) })
 }
 
+/** cloneParameters replaces methods; synchronize the cached virtual-method view as well. */
+internal fun cloneWatchLaterBuilderMethod(method: MutableMethod, owner: MutableClass): MutableMethod =
+    method.cloneParameters(owner).also { replacement ->
+        owner.virtualMethods.remove(method)
+        owner.virtualMethods.add(replacement)
+    }
+
 /** Preserve a per-card scope through real ConversionContext copies, independent of path hashes. */
 internal val watchLaterContextPatch = bytecodePatch {
     dependsOn(sharedExtensionPatch, conversionContextPatch)
@@ -68,7 +76,8 @@ internal val watchLaterContextPatch = bytecodePatch {
                     "invoke-static { p1, p0 }, $IDENTITY->copy(Ljava/lang/Object;Ljava/lang/Object;)V")
             }
         }
-        builder.methods.single { it.parameterTypes.isEmpty() && it.returnType == context.type }.cloneParameters().apply {
+        val build = builder.methods.single { it.parameterTypes.isEmpty() && it.returnType == context.type }
+        cloneWatchLaterBuilderMethod(build, builder).apply {
             val exits = implementation!!.instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_OBJECT }
             exits.asReversed().forEach { (index, _) ->
                 val result = getInstruction<OneRegisterInstruction>(index).registerA

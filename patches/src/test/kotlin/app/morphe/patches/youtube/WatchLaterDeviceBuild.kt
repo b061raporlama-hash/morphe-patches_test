@@ -11,6 +11,10 @@ import app.morphe.patches.youtube.interaction.savetowatchlater.watchLaterShortcu
 import app.morphe.patches.youtube.misc.gms.gmsCoreSupportPatch
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.Opcodes
+import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
+import com.android.tools.smali.dexlib2.writer.io.MemoryDataStore
+import com.android.tools.smali.dexlib2.writer.pool.DexPool
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.file.Files
@@ -26,7 +30,13 @@ fun main(args: Array<String>) {
             val builder = mutableClassDefBy { c -> c.methods.any {
                 it.name == "<init>" && it.parameterTypes == listOf(context.type)
             } && c.methods.any { it.returnType == context.type && it.parameterTypes.isEmpty() } }
-            for (owner in listOf(context, builder)) {
+            // Inspect the serialized classes, not just patcher's cached mutable collections.
+            val store = MemoryDataStore()
+            DexPool(Opcodes.getDefault()).apply {
+                internClass(context); internClass(builder); writeTo(store)
+            }
+            val serialized = DexBackedDexFile(Opcodes.getDefault(), java.nio.ByteBuffer.wrap(store.data)).classes
+            for (owner in serialized) {
                 check(owner.fields.any { it.name == "cep_watchLaterScope" }) {
                     "Missing scope field in ${owner.type}"
                 }
@@ -36,7 +46,8 @@ fun main(args: Array<String>) {
                 check(owner.methods.any { it.name == "patch_getWatchLaterScope" })
                 check(owner.methods.any { it.name == "patch_setWatchLaterScope" })
             }
-            for (method in builder.methods.filter { (it.name == "<init>" &&
+            val writtenBuilder = serialized.single { it.type == builder.type }
+            for (method in writtenBuilder.methods.filter { (it.name == "<init>" &&
                 it.parameterTypes == listOf(context.type)) || it.returnType == context.type }) {
                 check(method.implementation!!.instructions.any {
                     val ref = (it as? ReferenceInstruction)?.reference as? MethodReference
