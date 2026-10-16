@@ -1,32 +1,32 @@
 /* Copyright 2026 Cep Patcher contributors. See NOTICE for GPLv3 Section 7 terms. */
 package app.morphe.extension.youtube.patches.watchlater;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-/** Carries identity through child contexts; ambiguous shared template paths never select a video. */
+/** Per-conversion identity carried by context -> builder -> context copies. */
 public final class WatchLaterCardIdentity {
-    private record Binding(String path, String videoId) {}
-    private final Map<Object, Binding> scopes = new WeakHashMap<>();
     private static final Pattern CARD = Pattern.compile(
-            "(?:^|\\|)(?:home_video_with_context|search_video_with_context|"
-                    + "related_video_with_context|video_with_context|"
-                    + "video_lockup_with_attachment|compact_video)\\.e[^|\\s]*\\|([^|]+)(?:\\||$)");
-    private final Map<String, String> cards = new LinkedHashMap<>(256, .75f, true) {
-        @Override protected boolean removeEldestEntry(Map.Entry<String, String> entry) {
-            return size() > 512;
+        "(?:^|\\|)(?:home_video_with_context|search_video_with_context|related_video_with_context|video_with_context|video_lockup_with_attachment|compact_video)\\.e[^|\\s]*\\|([^|]+)(?:\\||$)");
+    /** A generation belongs to one card, even when its template is shared. */
+    public static final class Scope {
+        private final String path;
+        private volatile String videoId;
+        private boolean ambiguous;
+        private Scope(String path) { this.path = path; }
+        private synchronized void observe(String id) {
+            if (id == null || ambiguous) return;
+            if (videoId != null && !videoId.equals(id)) {
+                ambiguous = true;
+                videoId = null;
+            } else videoId = id;
         }
-    };
-
+        public String videoId() { return videoId; }
+        private synchronized void invalidate() { ambiguous = true; videoId = null; }
+    }
     private static String key(CharSequence path) {
         Matcher match = CARD.matcher(path);
         String key = null;
         while (match.find()) {
             String hash = match.group(1);
-            // Without the per-component hash, two siblings have the same path. Do not guess.
             if (!hash.endsWith("Type") && !hash.contains(".e")) {
                 key = path.subSequence(0, match.end()).toString();
                 if (!key.endsWith("|")) key += "|";
@@ -34,54 +34,30 @@ public final class WatchLaterCardIdentity {
         }
         return key;
     }
-
-    public synchronized void observe(CharSequence path, String videoId) {
-        observe(null, null, path, videoId);
+    /** Injected into the real context-copy constructor and builder build return. */
+    public static void copy(Object source, Object destination) {
+        if (source instanceof WatchLaterScopeCarrier from && destination instanceof WatchLaterScopeCarrier to)
+            to.patch_setWatchLaterScope(from.patch_getWatchLaterScope());
     }
-
-    public synchronized void observe(Object context, Object builder, CharSequence path, String videoId) {
+    public void observe(Object context, CharSequence path, String videoId) {
+        observe(context, path, videoId, false);
+    }
+    public void observe(Object context, CharSequence path, String videoId, boolean ambiguous) {
+        if (!(context instanceof WatchLaterScopeCarrier carrier)) return;
         String key = key(path);
         if (key == null) return;
-        boolean root = path.length() == key.length()
-                || path.length() + 1 == key.length();
-        // Descendant buffers often contain only a title or avatar. They must not erase the
-        // thumbnail identity observed on the parent before text creation runs.
-        if (root && videoId == null) cards.put(key, null);
-        if (videoId != null) {
-            Binding previous = scopes.get(builder);
-            if (previous == null || !key.equals(previous.path)) previous = scopes.get(context);
-            if (!root && previous != null && key.equals(previous.path)
-                    && !videoId.equals(previous.videoId)) {
-                Binding ambiguous = new Binding(key, null);
-                if (context != null) scopes.put(context, ambiguous);
-                if (builder != null) scopes.put(builder, ambiguous);
-                cards.put(key, null);
-                return;
-            }
-            Binding binding = new Binding(key, videoId);
-            if (context != null) scopes.put(context, binding);
-            if (builder != null) scopes.put(builder, binding);
-            // Template hashes can be shared. Do not replace another card's identity on a
-            // string-key match: only an exact context/builder can disambiguate those cards.
-            if (!cards.containsKey(key)) cards.put(key, videoId);
-            else if (!videoId.equals(cards.get(key))) cards.put(key, null);
-        } else if (root) {
-            if (context != null) scopes.remove(context);
-            if (builder != null) scopes.remove(builder);
+        boolean root = path.length() == key.length() || path.length() + 1 == key.length();
+        Scope scope = resolve(context, path);
+        if (root || scope == null) {
+            scope = new Scope(key);
+            carrier.patch_setWatchLaterScope(scope);
         }
+        if (ambiguous) scope.invalidate();
+        else scope.observe(videoId);
     }
-
-    public synchronized String resolve(CharSequence path) {
-        return resolve(null, null, path);
-    }
-
-    public synchronized String resolve(Object context, Object builder, CharSequence path) {
-        String key = key(path);
-        if (key == null) return null;
-        Binding binding = scopes.get(context);
-        if (binding != null && key.equals(binding.path)) return binding.videoId;
-        binding = scopes.get(builder);
-        if (binding != null && key.equals(binding.path)) return binding.videoId;
-        return cards.get(key);
+    public Scope resolve(Object context, CharSequence path) {
+        if (!(context instanceof WatchLaterScopeCarrier carrier)) return null;
+        Object value = carrier.patch_getWatchLaterScope();
+        return value instanceof Scope scope && scope.path.equals(key(path)) ? scope : null;
     }
 }

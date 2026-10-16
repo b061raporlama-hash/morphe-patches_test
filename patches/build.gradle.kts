@@ -87,6 +87,18 @@ tasks {
             ))
         }
     }
+    register<JavaExec>("validateWatchLater") {
+        group = "verification"
+        description = "Applies Watch later and validates context-copy hooks against a supplied real YouTube APK"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.youtube.WatchLaterDeviceBuildKt")
+        doFirst {
+            setArgs(listOfNotNull(providers.gradleProperty("youtubeApk").orNull
+                ?: throw GradleException("Pass -PyoutubeApk=/path/to/original.apk"),
+                providers.gradleProperty("youtubeOutput").orNull))
+        }
+    }
     // Used by gradle-semantic-release-plugin.
     publish {
         dependsOn("generatePatchesList")

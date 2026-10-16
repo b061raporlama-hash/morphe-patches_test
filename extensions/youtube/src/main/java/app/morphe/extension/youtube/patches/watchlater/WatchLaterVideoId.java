@@ -15,16 +15,22 @@ public final class WatchLaterVideoId {
 
     private WatchLaterVideoId() {}
 
+    public record Observation(String videoId, boolean ambiguous) {}
+
     /** Returns null for shelves, mixed buffers, avatars, and unrecognized URLs. */
     public static String fromBuffer(byte[] buffer) {
-        if (buffer == null || buffer.length == 0) return null;
+        return observe(buffer).videoId();
+    }
+
+    public static Observation observe(byte[] buffer) {
+        if (buffer == null || buffer.length == 0) return new Observation(null, false);
         Matcher matcher = THUMBNAIL.matcher(new String(buffer, StandardCharsets.ISO_8859_1));
         String found = null;
         while (matcher.find()) {
             String candidate = matcher.group(1);
-            if (found != null && !found.equals(candidate)) return null;
+            if (found != null && !found.equals(candidate)) return new Observation(null, true);
             found = candidate;
         }
-        return found;
+        return new Observation(found, false);
     }
 }

@@ -54,7 +54,7 @@ import app.morphe.extension.youtube.patches.watchlater.WatchLaterCardIdentity;
 /** Uses the card's own conversion context; never falls back to the active player. */
 @SuppressWarnings("unused")
 public final class WatchLaterShortcutsPatch {
-    private record VideoIdSpan(String videoId) {}
+    private record VideoIdSpan(WatchLaterCardIdentity.Scope scope) {}
 
     private static final WatchLaterCardIdentity identities = new WatchLaterCardIdentity();
     private static final Map<FrameLayout, WeakReference<Overlay>> overlays = new WeakHashMap<>();
@@ -69,22 +69,27 @@ public final class WatchLaterShortcutsPatch {
     }
 
     public static void bindContext(ContextInterface context, String videoId) {
+        bindContext(context, videoId, false);
+    }
+
+    public static void bindContext(ContextInterface context, String videoId, boolean ambiguous) {
         StringBuilder path = context.patch_getPathBuilder();
-        identities.observe(context, path, path, videoId);
+        identities.observe(context, path, videoId, ambiguous);
     }
 
     /** Carries identity with mounted text, including when Litho reuses cached spans. */
     public static CharSequence onLithoTextLoaded(ContextInterface context, CharSequence text) {
         if (text == null || text.length() == 0) return text;
         StringBuilder path = context.patch_getPathBuilder();
-        String id = isEnabled() ? identities.resolve(context, path, path) : null;
+        WatchLaterCardIdentity.Scope scope = isEnabled() ? identities.resolve(context, path) : null;
         VideoIdSpan[] old = text instanceof Spanned spanned
                 ? spanned.getSpans(0, text.length(), VideoIdSpan.class) : new VideoIdSpan[0];
-        if (id == null && old.length == 0) return text;
+        if (scope == null && old.length == 0) return text;
+        if (old.length == 1 && old[0].scope() == scope) return text;
         SpannableString marked = new SpannableString(text);
         for (VideoIdSpan span : old) marked.removeSpan(span);
-        if (id != null) {
-            marked.setSpan(new VideoIdSpan(id), 0, marked.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (scope != null) {
+            marked.setSpan(new VideoIdSpan(scope), 0, marked.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         return marked;
     }
@@ -130,7 +135,7 @@ public final class WatchLaterShortcutsPatch {
 
     private static void updateNavigationAppearance(View view) {
         if (view instanceof ImageView image && !(image.getDrawable() instanceof ClockDrawable)) {
-            image.setImageDrawable(new ClockDrawable());
+            image.setImageDrawable(new ClockDrawable(image));
             if (image.getImageTintList() == null) {
                 TypedArray colors = view.getContext().obtainStyledAttributes(new int[]{android.R.attr.textColorPrimary});
                 try {
@@ -176,7 +181,8 @@ public final class WatchLaterShortcutsPatch {
             if (content != null) for (CharSequence text : content.getTextItems()) {
                 if (!(text instanceof Spanned spanned)) continue;
                 for (VideoIdSpan span : spanned.getSpans(0, text.length(), VideoIdSpan.class)) {
-                    ids.add(span.videoId());
+                    String id = span.scope().videoId();
+                    if (id != null) ids.add(id);
                 }
             }
         }
@@ -201,7 +207,8 @@ public final class WatchLaterShortcutsPatch {
         Card(View host, FrameLayout layer) {
             this.host = new WeakReference<>(host);
             button = new ImageButton(layer.getContext());
-            button.setImageDrawable(new ClockDrawable());
+            button.setImageDrawable(new ClockDrawable(button));
+            button.setScaleType(ImageView.ScaleType.FIT_CENTER);
             button.setImageTintList(ColorStateList.valueOf(Color.WHITE));
             int padding = dp(layer, 8);
             button.setPadding(padding, padding, padding, padding);
@@ -352,9 +359,12 @@ public final class WatchLaterShortcutsPatch {
 
     private static final class ClockDrawable extends Drawable {
         final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        final int size;
         boolean saved;
         ColorStateList tint;
         int alpha = 255;
+
+        ClockDrawable(View view) { size = dp(view, 24); }
 
         void setSaved(boolean saved) {
             if (this.saved != saved) {
@@ -390,7 +400,7 @@ public final class WatchLaterShortcutsPatch {
         @Override protected boolean onStateChange(int[] state) { invalidateSelf(); return true; }
         @Override public void setColorFilter(ColorFilter filter) { paint.setColorFilter(filter); invalidateSelf(); }
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
-        @Override public int getIntrinsicWidth() { return 24; }
-        @Override public int getIntrinsicHeight() { return 24; }
+        @Override public int getIntrinsicWidth() { return size; }
+        @Override public int getIntrinsicHeight() { return size; }
     }
 }

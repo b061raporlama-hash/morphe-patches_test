@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import app.morphe.extension.shared.patches.components.ContextInterface;
 import app.morphe.extension.youtube.patches.WatchLaterShortcutsPatch;
+import app.morphe.extension.youtube.patches.watchlater.WatchLaterCardIdentity;
+import app.morphe.extension.youtube.patches.watchlater.WatchLaterScopeCarrier;
 import app.morphe.extension.youtube.patches.utils.requests.SaveToWatchLaterRequest;
 import app.morphe.extension.youtube.settings.Settings;
 import app.morphe.extension.youtube.shared.PlayerType;
@@ -40,30 +42,48 @@ public class WatchLaterOverlayTest {
         return context(new StringBuilder(path));
     }
 
-    private static ContextInterface context(StringBuilder path) {
-        return new ContextInterface() {
-            public String patch_getIdentifier() { return "home_video_with_context.e"; }
-            public StringBuilder patch_getPathBuilder() { return path; }
-            public Integer patch_getHeightConstraint() { return null; }
-            public Object patch_getHorizontalCollectionSwipeProtector() { return null; }
-        };
+    private static final class FixtureContext implements ContextInterface, WatchLaterScopeCarrier {
+        final StringBuilder path;
+        Object scope;
+        FixtureContext(StringBuilder path) { this.path = path; }
+        public String patch_getIdentifier() { return "home_video_with_context.e"; }
+        public StringBuilder patch_getPathBuilder() { return path; }
+        public Integer patch_getHeightConstraint() { return null; }
+        public Object patch_getHorizontalCollectionSwipeProtector() { return null; }
+        public Object patch_getWatchLaterScope() { return scope; }
+        public void patch_setWatchLaterScope(Object value) { scope = value; }
     }
 
-    private static CharSequence sharedTemplateTitle(String text, String id) {
-        StringBuilder path = new StringBuilder("feed|video_lockup_with_attachment.eml-fe|c0c4a49b6544b5fb|");
-        WatchLaterShortcutsPatch.bindContext(context(path), id);
-        path.append("ContainerType|TextType|");
-        ContextInterface child = context(path);
+    private static ContextInterface context(StringBuilder path) { return new FixtureContext(path); }
+
+    private static ContextInterface child(ContextInterface root, String path) {
+        FixtureContext builder = new FixtureContext(new StringBuilder(path));
+        FixtureContext child = new FixtureContext(new StringBuilder(path));
+        WatchLaterCardIdentity.copy(root, builder);
+        WatchLaterCardIdentity.copy(builder, child);
         WatchLaterShortcutsPatch.bindContext(child, null);
-        return WatchLaterShortcutsPatch.onLithoTextLoaded(child, text);
+        return child;
+    }
+
+    private static CharSequence sharedTemplateTitle(CharSequence text, String id) {
+        String path = "feed|video_lockup_with_attachment.eml-fe|c0c4a49b6544b5fb|";
+        ContextInterface root = context(path);
+        WatchLaterShortcutsPatch.bindContext(root, id);
+        ContextInterface child = child(root, path + "ContainerType|TextType|");
+        CharSequence marked = WatchLaterShortcutsPatch.onLithoTextLoaded(child, text);
+        // Cached text is visited repeatedly through NEW copied conversion contexts.
+        for (int i = 0; i < 30; i++) {
+            child = child(root, path + "ContainerType|TextType|");
+            marked = WatchLaterShortcutsPatch.onLithoTextLoaded(child, marked);
+        }
+        return marked;
     }
 
     private static CharSequence title(String hash, String id) {
         String path = "feed|home_video_with_context.eml-fe|" + hash + "|";
-        WatchLaterShortcutsPatch.bindContext(context(path), id);
-        // A child has a NEW conversion context and builder, and no thumbnail in its buffer.
-        ContextInterface child = context(path + "ContainerType|TextType|");
-        WatchLaterShortcutsPatch.bindContext(child, null);
+        ContextInterface root = context(path);
+        WatchLaterShortcutsPatch.bindContext(root, id);
+        ContextInterface child = child(root, path + "ContainerType|TextType|");
         return WatchLaterShortcutsPatch.onLithoTextLoaded(child, "Title " + hash);
     }
 
@@ -138,6 +158,8 @@ public class WatchLaterOverlayTest {
                 first.getGlobalVisibleRect(host);
                 assertTrue(buttons.get(0).getGlobalVisibleRect(clock));
                 assertTrue("Clock must be inside its thumbnail", host.contains(clock));
+                assertEquals(Math.round(24 * screen.getResources().getDisplayMetrics().density),
+                        buttons.get(0).getDrawable().getIntrinsicWidth());
                 try (var output = new java.io.FileOutputStream(new java.io.File(activity.getFilesDir(), "watch-later-overlay.png"))) {
                     android.graphics.Bitmap screenshot = android.graphics.Bitmap.createBitmap(screen.getRootView().getWidth(),
                             screen.getRootView().getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
@@ -183,6 +205,27 @@ public class WatchLaterOverlayTest {
             instrumentation.runOnMainSync(() -> second.setTranslationY(0));
             draw();
             instrumentation.runOnMainSync(() -> assertEquals(1, visibleButtons().size()));
+            // Thirty new videos all share the same real-style template path. Reuse both
+            // mounted hosts and their cached title strings, then detach and attach again.
+            for (int pair = 0; pair < 15; pair++) {
+                String leftId = String.format(java.util.Locale.ROOT, "%011d", pair * 2 + 100);
+                String rightId = String.format(java.util.Locale.ROOT, "%011d", pair * 2 + 101);
+                instrumentation.runOnMainSync(() -> {
+                    first.texts = List.of(sharedTemplateTitle(first.texts.get(0), leftId));
+                    second.texts = List.of(sharedTemplateTitle(second.texts.get(0), rightId));
+                    measured.removeView(first);
+                    measured.addView(first, 0);
+                });
+                draw();
+                instrumentation.runOnMainSync(() -> {
+                    List<ImageButton> buttons = visibleButtons();
+                    assertEquals("Recycled shared-template cards keep both clocks", 2, buttons.size());
+                    int before = SaveToWatchLaterRequest.ids.size();
+                    buttons.get(0).performClick();
+                    buttons.get(1).performClick();
+                    assertEquals(List.of(leftId, rightId), SaveToWatchLaterRequest.ids.subList(before, before + 2));
+                });
+            }
             instrumentation.runOnMainSync(() -> PlayerType.maximized = true);
             draw();
             instrumentation.runOnMainSync(() -> assertEquals(0, visibleButtons().size()));

@@ -26,7 +26,8 @@ public final class WatchLaterFilter extends Filter {
     public boolean isFiltered(ContextInterface context, String identifier, String accessibility,
                               CharSequence path, byte[] buffer, BufferAsciiStrings asciiStrings,
                               StringFilterGroup group, FilterContentType type, int index) {
-        WatchLaterShortcutsPatch.bindContext(context, WatchLaterVideoId.fromBuffer(buffer));
+        WatchLaterVideoId.Observation observation = WatchLaterVideoId.observe(buffer);
+        WatchLaterShortcutsPatch.bindContext(context, observation.videoId(), observation.ambiguous());
         return false;
     }
 }

@@ -161,6 +161,13 @@ jobs:
             grep -q 'OK (3 tests)' instrumentation.txt
             ! grep -q 'FAILURES\|INSTRUMENTATION_FAILED\|Process crashed' instrumentation.txt
             adb exec-out run-as io.github.b061raporlama.ceppatcher.debug cat files/watch-later-overlay.png > watch-later-overlay.png
+            adb shell wm size 1080x2400
+            adb shell wm density 480
+            adb shell am force-stop io.github.b061raporlama.ceppatcher.debug
+            timeout 180s adb shell am instrument -w -e class app.morphe.manager.WatchLaterOverlayTest io.github.b061raporlama.ceppatcher.debug.test/androidx.test.runner.AndroidJUnitRunner | tee instrumentation-xxhdpi.txt
+            grep -q 'OK (1 test)' instrumentation-xxhdpi.txt
+            ! grep -q 'FAILURES\|INSTRUMENTATION_FAILED\|Process crashed' instrumentation-xxhdpi.txt
+            adb exec-out run-as io.github.b061raporlama.ceppatcher.debug cat files/watch-later-overlay.png > watch-later-overlay-xxhdpi.png
             adb shell pm path app.morphe.android.youtube > morphe-after.txt
             diff morphe-before.txt morphe-after.txt
             adb shell pm list packages | tr -d '\r' > packages.txt
@@ -174,11 +181,13 @@ jobs:
           name: cep-android-loader-result
           path: |
             instrumentation.txt
+            instrumentation-xxhdpi.txt
             conflict.txt
             packages.txt
             morphe-before.txt
             morphe-after.txt
             watch-later-overlay.png
+            watch-later-overlay-xxhdpi.png
 
   publish:
     needs: [build, android-loader]

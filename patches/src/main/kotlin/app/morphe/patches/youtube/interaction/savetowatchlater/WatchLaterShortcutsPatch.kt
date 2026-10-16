@@ -33,6 +33,7 @@ val watchLaterShortcutsPatch = bytecodePatch(
         lithoFilterPatch,
         lithoSpannableStringPatch,
         lithoRelayoutPatch,
+        watchLaterContextPatch,
     )
 
     compatibleWith(COMPATIBILITY_YOUTUBE)
