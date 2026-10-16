@@ -1,5 +1,27 @@
 # Cep Patcher
 
+## Morphe ile yan yana kurulum
+
+Yerleşik Cep Patches kaynağındaki **GmsCore support**, YouTube için artık `app.cep.android.youtube`
+kimliğini kullanır. **Custom branding** varsayılan adı **Cep YouTube** olur. Böylece mevcut
+`app.morphe.android.youtube` ve `app.morphe.manager` kurulumları korunarak yeni uygulama kurulabilir.
+GmsCore aynı kalır ve paylaşılabilir. Bu yol normal APK yüklemesi içindir; root mount ayrı bir kurulum yöntemidir.
+
+Önce yeni Cep Patcher APK'sını eskisinin üzerine kurun; Cep Patcher'ın verilerini silmeyin.
+Gömülü kaynak eskiyse APK güncellemesiyle çevrimdışı yenilenir; daha yeni çevrimiçi paket geri alınmaz.
+Orijinal YouTube APK'sını yeniden yamalayın ve oluşan yeni uygulamayı kurun. Önceden üretilen APK'ların
+kimliği değişmez. Eski Cep sürümünde açıkça kaydedilmiş Morphe paket adı yerleşik kaynak için yeni
+kimliğe taşınır; kullanıcının farklı özel clone adları korunur.
+
+Yeni kurulumun uygulama verileri ayrıdır; hesabınıza yeniden giriş yapmanız gerekebilir. Özel bir clone
+paket adını kendiniz değiştirirseniz, o adla kurulu farklı imzalı bir uygulamayla yine çakışabilirsiniz.
+
+CI, üretimde kullanılan clone ve GmsCore manifest dönüşüm kodunu sentetik bir APK'ya uygular.
+Android 15'te farklı imzalı eski Morphe paketleri kurulu tutulurken imza çakışması yeniden üretilir,
+Cep kimlikli APK ve sonraki aynı anahtarlı yükleme başarıyla kurulmalıdır. Gerçek imzalı Cep Patcher
+release APK'sı da bu eski paketlerle birlikte kurulup başlatılır. Bu test gerçek YouTube APK'sının
+işlevlerini veya fiziksel telefon davranışını doğrulamaz.
+
 ## Yayımlanan ve doğrulanan sürüm
 
 - [Cep Patcher 1.0.3 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.3/cep-patcher.apk) — 30.124.745 bayt; dört Android işlemci mimarisini içerir.

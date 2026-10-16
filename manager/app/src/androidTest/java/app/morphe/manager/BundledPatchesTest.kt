@@ -17,9 +17,33 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.util.jar.Attributes
+import java.util.jar.JarOutputStream
+import java.util.jar.Manifest
 
 @RunWith(AndroidJUnit4::class)
 class BundledPatchesTest {
+    @Test fun managerUpgradeReplacesOldReadOnlyBundleWithoutNetwork() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File(context.cacheDir, "cep-upgrade-test/patches.jar")
+        file.parentFile!!.mkdirs()
+        val oldManifest = Manifest().apply {
+            mainAttributes[Attributes.Name.MANIFEST_VERSION] = "1.0"
+            mainAttributes.putValue("Version", "1.47.0-cep.3")
+        }
+        try {
+            JarOutputStream(file.outputStream(), oldManifest).use { }
+            assertTrue(file.setReadOnly())
+            assertTrue(BundledPatches.installIfNewer({ context.assets.open("cep-patches.mpp") }, file))
+            assertFalse(file.canWrite())
+            assertEquals(BundledPatches.version(context.assets.open("cep-patches.mpp")),
+                PatchBundle(file.absolutePath).manifestAttributes!!.version)
+            assertFalse(BundledPatches.installIfNewer({ context.assets.open("cep-patches.mpp") }, file))
+        } finally {
+            file.delete()
+        }
+    }
+
     @Test fun shippedBundleLoadsWithTheManagersActualDexLoader() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.cacheDir, "cep-loader-test/patches.jar")

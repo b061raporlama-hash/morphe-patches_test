@@ -74,6 +74,19 @@ tasks {
             setArgs(listOfNotNull(apk, jamOutput.orNull))
         }
     }
+    register<JavaExec>("validateCepCoexistence") {
+        group = "verification"
+        description = "Runs production YouTube clone and GmsCore manifest identity code on an installable fixture"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.youtube.CepCoexistenceBuildKt")
+        doFirst {
+            setArgs(listOf(
+                providers.gradleProperty("cepFixtureApk").get(),
+                providers.gradleProperty("cepFixtureOutput").get()
+            ))
+        }
+    }
     // Used by gradle-semantic-release-plugin.
     publish {
         dependsOn("generatePatchesList")

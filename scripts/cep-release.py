@@ -23,6 +23,8 @@ with zipfile.ZipFile(bundle) as archive:
     assert any("WatchLaterShortcutsPatch" in n for n in archive.namelist()) or any(
         b"Watch later shortcuts" in archive.read(n) for n in archive.namelist() if n.endswith(".dex")
     ), "Shortcut patch absent"
+    assert any(b"app.cep.android.youtube" in archive.read(n)
+               for n in archive.namelist() if n.endswith(".dex")), "Independent YouTube identity absent"
 # Remote sources deserialize created_at as kotlinx.datetime.LocalDateTime (no offset).
 created = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
 for filename, version, asset in [
@@ -37,5 +39,6 @@ for filename, version, asset in [
     commit=args.sha, repository=args.repo, manager_upstream="da8545c92c94b83e23adf7b573b46b282fa2b062",
     patch_sha256=hashlib.sha256(bundle.read_bytes()).hexdigest(),
     application_id="io.github.b061raporlama.ceppatcher", created_at=created,
+    default_youtube_package="app.cep.android.youtube",
 ), indent=2) + "\n")
 print("Validated DEX bundle and generated release feeds")

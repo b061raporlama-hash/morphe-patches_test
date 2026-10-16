@@ -126,7 +126,8 @@ internal fun baseCustomBrandingPatch(
     activityAliasNameWithIntents: String,
     preferenceScreen: BasePreferenceScreen.Screen,
     block: ResourcePatchBuilder.() -> Unit,
-    executeBlock: ResourcePatchContext.() -> Unit = {}
+    executeBlock: ResourcePatchContext.() -> Unit = {},
+    defaultCustomName: String? = null,
 ): ResourcePatch = resourcePatch(
     name = "Custom branding",
     description = "Adds options to change the app icon and app name. " +
@@ -143,6 +144,7 @@ internal fun baseCustomBrandingPatch(
 
     val customName by stringOption(
         key = "customName",
+        default = defaultCustomName,
         title = "App name",
         description = "Custom app name."
     )

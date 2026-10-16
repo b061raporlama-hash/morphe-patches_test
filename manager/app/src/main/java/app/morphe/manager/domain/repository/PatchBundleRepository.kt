@@ -495,21 +495,22 @@ class PatchBundleRepository(
     }
 
     private suspend fun loadFromDb(): List<PatchBundleEntity> {
-        val all = dao.all()
-        if (all.isEmpty()) {
-            // Always restore default bundle if database is empty
-            val default = createDefaultEntity()
-            // Cep Patcher: seed the same updateable source with the bundle shipped in this APK.
-            // Complete the read-only DEX container before recording the source in Room.
-            BundledPatches.install(
-                app.assets.open("cep-patches.mpp"),
-                directoryOf(DEFAULT_SOURCE_UID).resolve("patches.jar")
-            )
-            dao.upsert(default)
-            return listOf(default)
+        val stored = dao.all()
+        val all = stored.ifEmpty { listOf(createDefaultEntity()) }
+        return all.map { entity ->
+            // Only the built-in Cep endpoint is seeded. Keep user sources and newer online bundles.
+            if (entity.uid == DEFAULT_SOURCE_UID && entity.source.toString() == SOURCE_RELEASE_JSON_URL &&
+                BundledPatches.installIfNewer(
+                    { app.assets.open("cep-patches.mpp") },
+                    directoryOf(entity.uid).resolve("patches.jar")
+                )
+            ) {
+                entity.copy(versionHash = null).also { dao.upsert(it) }
+            } else {
+                // Also record a fresh entity when its bundle was already present on disk.
+                entity.also { if (stored.isEmpty()) dao.upsert(it) }
+            }
         }
-
-        return all
     }
 
     private suspend fun loadMetadata(sources: Map<Int, PatchBundleSource>): Map<Int, PatchBundleInfo.Global> {

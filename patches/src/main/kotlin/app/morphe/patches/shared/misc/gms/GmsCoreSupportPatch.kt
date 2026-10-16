@@ -573,27 +573,8 @@ fun gmsCoreSupportResourcePatch(
          * Patch the manifest to support GmsCore.
          */
         fun patchManifest() {
-            val transformations = mapOf(
-                "package=\"$fromPackageName" to "package=\"$toPackageName",
-                "android:authorities=\"$fromPackageName" to "android:authorities=\"$toPackageName",
-                "$fromPackageName.permission.C2D_MESSAGE" to "$toPackageName.permission.C2D_MESSAGE",
-                "$fromPackageName.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" to "$toPackageName.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
-                "com.google.android.c2dm" to "$GMS_CORE_VENDOR_GROUP_ID.android.c2dm",
-                "com.google.android.libraries.photos.api.mars" to "$GMS_CORE_VENDOR_GROUP_ID.android.apps.photos.api.mars",
-                // Allow the app to request uninstall of conflicting MicroG / GMS variants on Android 14+.
-                // The variants are made visible to the package manager by gmsCorePackageQueriesPatch.
-                "</queries>" to "</queries><uses-permission android:name=\"android.permission.REQUEST_DELETE_PACKAGES\"/>",
-            )
-
             val manifest = get("AndroidManifest.xml")
-            manifest.writeText(
-                transformations.entries.fold(manifest.readText()) { acc, (from, to) ->
-                    acc.replace(
-                        from,
-                        to,
-                    )
-                }
-            )
+            manifest.writeText(remapGmsManifestIdentity(manifest.readText(), fromPackageName, toPackageName))
         }
 
         patchManifest()

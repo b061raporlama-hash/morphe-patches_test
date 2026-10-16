@@ -53,6 +53,21 @@ jobs:
           cp "${BUNDLES[0]}" dist/cep-patches.mpp
           cp dist/cep-patches.mpp manager/app/src/main/assets/cep-patches.mpp
           cp patches-list.json dist/patches-list.json
+      - name: Build and patch independent-install fixtures with production identity code
+        run: |
+          python3 scripts/cep-coexistence-fixture.py build/cep-coexistence
+          ./gradlew :patches:validateCepCoexistence --no-daemon --stacktrace -Pversion=1.47.0-cep.${{ github.run_number }} -PcepFixtureApk="$PWD/build/cep-coexistence/original.apk" -PcepFixtureOutput="$PWD/build/cep-coexistence/cep-unsigned.apk"
+          bash scripts/cep-coexistence-sign.sh build/cep-coexistence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cep-coexistence-fixtures
+          path: |
+            build/cep-coexistence/morphe-manager.apk
+            build/cep-coexistence/morphe-youtube.apk
+            build/cep-coexistence/conflicting-youtube.apk
+            build/cep-coexistence/cep-youtube.apk
+            build/cep-coexistence/identity.txt
+          if-no-files-found: error
       - name: Restore persistent Cep Patcher signing key
         env:
           CEP_KEYSTORE_B64: ${{ secrets.CEP_KEYSTORE_B64 }}
@@ -109,6 +124,14 @@ jobs:
         with:
           name: cep-device-tests
           path: apks
+      - uses: actions/download-artifact@v4
+        with:
+          name: cep-coexistence-fixtures
+          path: coexistence
+      - uses: actions/download-artifact@v4
+        with:
+          name: cep-patcher-release
+          path: release
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -120,16 +143,39 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
+            adb install coexistence/morphe-manager.apk
+            adb install coexistence/morphe-youtube.apk
+            adb shell pm path app.morphe.android.youtube > morphe-before.txt
+            if adb install -r coexistence/conflicting-youtube.apk > conflict.txt 2>&1; then exit 1; fi
+            grep 'INSTALL_FAILED_UPDATE_INCOMPATIBLE' conflict.txt
+            adb install coexistence/cep-youtube.apk
+            adb install -r coexistence/cep-youtube.apk
+            adb install release/cep-patcher.apk
+            adb shell am start -W -n io.github.b061raporlama.ceppatcher/app.morphe.manager.MainActivity
+            sleep 3
+            adb shell pidof io.github.b061raporlama.ceppatcher
             adb install $(find apks/debug -name '*.apk' | head -1)
             adb install $(find apks/androidTest/debug -name '*.apk' | head -1)
             adb shell am instrument -w io.github.b061raporlama.ceppatcher.debug.test/androidx.test.runner.AndroidJUnitRunner | tee instrumentation.txt
-            grep -q 'OK (1 test)' instrumentation.txt
+            grep -q 'OK (2 tests)' instrumentation.txt
             ! grep -q 'FAILURES\|INSTRUMENTATION_FAILED\|Process crashed' instrumentation.txt
+            adb shell pm path app.morphe.android.youtube > morphe-after.txt
+            diff morphe-before.txt morphe-after.txt
+            adb shell pm list packages | tr -d '\r' > packages.txt
+            grep -Fx 'package:app.morphe.manager' packages.txt
+            grep -Fx 'package:app.morphe.android.youtube' packages.txt
+            grep -Fx 'package:app.cep.android.youtube' packages.txt
+            grep -Fx 'package:io.github.b061raporlama.ceppatcher' packages.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: cep-android-loader-result
-          path: instrumentation.txt
+          path: |
+            instrumentation.txt
+            conflict.txt
+            packages.txt
+            morphe-before.txt
+            morphe-after.txt
 
   publish:
     needs: [build, android-loader]

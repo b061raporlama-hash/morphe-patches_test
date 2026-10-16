@@ -45,6 +45,7 @@ import app.morphe.manager.domain.worker.WorkerRepository
 import app.morphe.manager.patcher.logger.Logger
 import app.morphe.manager.patcher.patch.ApkArchitectureResolver
 import app.morphe.manager.patcher.patch.PatchSourceRef
+import app.morphe.manager.patcher.patch.CepYouTubeIdentity
 import app.morphe.manager.patcher.runtime.CoroutineRuntime
 import app.morphe.manager.patcher.runtime.ProcessRuntime
 import app.morphe.manager.patcher.runtime.coerceMemoryLimit
@@ -452,7 +453,10 @@ class PatcherWorker(
                 CoroutineRuntime(applicationContext)
             }
 
-            val options = args.options.restrictTo(args.selectedPatches)
+            val options = CepYouTubeIdentity.migrateLegacyOptions(
+                args.packageName,
+                args.options.restrictTo(args.selectedPatches)
+            )
 
             // After merging a split archive (in either runtime), save the resulting mono-APK
             // directly to originalApksDir so it is used for repatching instead of the archive.

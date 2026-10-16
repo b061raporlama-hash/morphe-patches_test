@@ -1,9 +1,15 @@
 Cep Patcher is an independent, modified build of Morphe Manager with its own name, application ID and pocket/clock icon. It is not an official Morphe release.
 
+YouTube patched with the built-in source now defaults to **`app.cep.android.youtube`**, with **Cep YouTube** as the default Custom branding name. It installs beside `app.morphe.android.youtube` and the original YouTube. Existing Morphe Manager and Morphe YouTube installations can remain installed. GmsCore keeps its existing identity and can be shared.
+
+Upgrade Cep Patcher over the previous version, then patch the original YouTube APK again. Already generated APKs retain their previous package identity. A manager upgrade refreshes an older embedded Cep bundle offline and migrates an explicitly saved old Morphe clone identity for the built-in source; newer downloaded bundles and private clone names are preserved.
+
 Download `cep-patcher.apk` and install on Android 8.0 or newer. The APK includes **Cep Patches**, containing **Watch later shortcuts**. In expert mode select YouTube, choose a supported original APK, then explicitly select **Watch later shortcuts**. Its dependencies are included automatically. Patch and install the result.
 
 Patch updates use this release's `cep-patches-bundle.json` through the repository's latest-release endpoint. No token is needed to use the public release. The APK is signed with the repository's persistent Cep Patcher key.
 
 Automated checks cover patch regression tests, manager unit tests and lint, APK signature/identity, and actual bundle loading with the manager's Android DEX loader on an Android 15 emulator. These do not prove successful YouTube patching or behavior on a physical phone. Feed cards, real account saves, navigation, offline behavior, root installation and device-specific patching still require phone testing.
+
+The Android 15 coexistence check installs synthetic Morphe Manager/YouTube fixtures, reproduces the different-key update rejection, then installs a synthetic Cep YouTube APK transformed by the production clone and GmsCore manifest identity code. Both old packages remain installed; the real signed Cep Patcher release is also installed and launched. These fixtures contain no YouTube code and do not substitute for running a real patched YouTube APK.
 
 `cep-patcher-source.tar.gz` provides corresponding source for this release. GPLv3 and upstream Section 7 notices are preserved in the source, APK legal assets and manager license UI. See `manager/UPSTREAM.md` and `docs/cep-patcher.md` for provenance, build instructions and limitations.

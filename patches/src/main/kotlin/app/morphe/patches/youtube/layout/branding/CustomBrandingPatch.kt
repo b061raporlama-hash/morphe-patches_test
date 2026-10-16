@@ -33,6 +33,8 @@ val customBrandingPatch = baseCustomBrandingPatch(
     mainActivityName = YOUTUBE_MAIN_ACTIVITY_NAME,
     activityAliasNameWithIntents = $$"com.google.android.youtube.app.honeycomb.Shell$HomeActivity",
     preferenceScreen = PreferenceScreen.GENERAL,
+    // Cep Patcher modification, 2026-10-16: distinguish the side-by-side installation.
+    defaultCustomName = "Cep YouTube",
 
     block = {
         dependsOn(
