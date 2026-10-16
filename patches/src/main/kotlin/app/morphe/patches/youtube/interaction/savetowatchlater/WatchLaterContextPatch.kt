@@ -18,6 +18,10 @@ import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
@@ -53,6 +57,46 @@ internal fun cloneWatchLaterBuilderMethod(method: MutableMethod, owner: MutableC
         owner.virtualMethods.add(replacement)
     }
 
+/** Run only after Object.<init>, while both incoming object parameters are still intact. */
+internal fun hookWatchLaterContextConstructor(method: MutableMethod) {
+    val implementation = checkNotNull(method.implementation)
+    check(method.name == "<init>" && method.parameterTypes.size == 1 &&
+        implementation.registerCount in 2..16) { "Unsupported context builder constructor" }
+    val first = method.getInstruction<Instruction>(0)
+    val reference = (first as? ReferenceInstruction)?.reference as? MethodReference
+    check(first.opcode == Opcode.INVOKE_DIRECT && first is FiveRegisterInstruction && first.registerCount == 1 &&
+        first.registerC == implementation.registerCount - 2 &&
+        reference?.definingClass == "Ljava/lang/Object;" && reference.name == "<init>" &&
+        reference.parameterTypes.isEmpty()) { "Context builder must start by initializing this" }
+    // p1 is reused as a short/int scratch register near the original return. A hook at
+    // RETURN_VOID sends that primitive to copy(Object,Object) and ART rejects the class.
+    method.addInstructions(1,
+        "invoke-static { p1, p0 }, $IDENTITY->copy(Ljava/lang/Object;Ljava/lang/Object;)V")
+}
+
+/** The real patch and the Android DEX regression fixture use this same transformation. */
+internal fun instrumentWatchLaterContextCopies(context: MutableClass, builder: MutableClass) {
+    check(builder.superclass == "Ljava/lang/Object;") { "Unsupported context builder superclass" }
+    addWatchLaterScopeCarrier(context)
+    addWatchLaterScopeCarrier(builder)
+    hookWatchLaterContextConstructor(builder.methods.single {
+        it.name == "<init>" && it.parameterTypes == listOf(context.type)
+    })
+    val build = builder.methods.single { it.parameterTypes.isEmpty() && it.returnType == context.type }
+    cloneWatchLaterBuilderMethod(build, builder).apply {
+        val exits = implementation!!.instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_OBJECT }
+        exits.asReversed().forEach { (index, _) ->
+            val result = getInstruction<OneRegisterInstruction>(index).registerA
+            val source = findFreeRegister(index, result)
+            check(result < 16 && source < 16) { "Unsupported context builder return registers" }
+            addInstructionsAtControlFlowLabel(index, """
+                move-object/from16 v$source, p0
+                invoke-static { v$source, v$result }, $IDENTITY->copy(Ljava/lang/Object;Ljava/lang/Object;)V
+            """)
+        }
+    }
+}
+
 /** Preserve a per-card scope through real ConversionContext copies, independent of path hashes. */
 internal val watchLaterContextPatch = bytecodePatch {
     dependsOn(sharedExtensionPatch, conversionContextPatch)
@@ -64,30 +108,6 @@ internal val watchLaterContextPatch = bytecodePatch {
                 clazz.methods.any { it.parameterTypes.isEmpty() && it.returnType == context.type }
         }
 
-        addWatchLaterScopeCarrier(context)
-        addWatchLaterScopeCarrier(builder)
-
-        builder.methods.single { it.name == "<init>" && it.parameterTypes == listOf(context.type) }.apply {
-            // Constructor in the supported APK has one local plus p0/p1.
-            check(implementation!!.registerCount <= 16) { "Unsupported context builder constructor registers" }
-            val exits = implementation!!.instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_VOID }
-            exits.asReversed().forEach { (index, _) ->
-                addInstructionsAtControlFlowLabel(index,
-                    "invoke-static { p1, p0 }, $IDENTITY->copy(Ljava/lang/Object;Ljava/lang/Object;)V")
-            }
-        }
-        val build = builder.methods.single { it.parameterTypes.isEmpty() && it.returnType == context.type }
-        cloneWatchLaterBuilderMethod(build, builder).apply {
-            val exits = implementation!!.instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_OBJECT }
-            exits.asReversed().forEach { (index, _) ->
-                val result = getInstruction<OneRegisterInstruction>(index).registerA
-                val source = findFreeRegister(index, result)
-                check(result < 16 && source < 16) { "Unsupported context builder return registers" }
-                addInstructionsAtControlFlowLabel(index, """
-                    move-object/from16 v$source, p0
-                    invoke-static { v$source, v$result }, $IDENTITY->copy(Ljava/lang/Object;Ljava/lang/Object;)V
-                """)
-            }
-        }
+        instrumentWatchLaterContextCopies(context, builder)
     }
 }

@@ -6,6 +6,7 @@ import app.morphe.patcher.PatcherConfig
 import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.patcher.dex.SdkDexVerifier
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.patch.PatchLoader
 import app.morphe.patches.shared.misc.litho.context.conversionContextClassDef
 import app.morphe.patches.youtube.interaction.savetowatchlater.watchLaterShortcutsPatch
 import app.morphe.patches.youtube.misc.gms.gmsCoreSupportPatch
@@ -21,7 +22,7 @@ import java.nio.file.Files
 
 /** Local only: the supplied proprietary APK is never committed or uploaded. */
 fun main(args: Array<String>) {
-    require(args.size in 1..2)
+    require(args.size in 1..3)
     val sdk = System.getenv("ANDROID_HOME") ?: error("Set ANDROID_HOME")
     val probe = bytecodePatch {
         dependsOn(watchLaterShortcutsPatch)
@@ -47,6 +48,13 @@ fun main(args: Array<String>) {
                 check(owner.methods.any { it.name == "patch_setWatchLaterScope" })
             }
             val writtenBuilder = serialized.single { it.type == builder.type }
+            val constructor = writtenBuilder.methods.single {
+                it.name == "<init>" && it.parameterTypes == listOf(context.type)
+            }.implementation!!.instructions.toList()
+            val earlyCopy = (constructor[1] as? ReferenceInstruction)?.reference as? MethodReference
+            check(earlyCopy?.name == "copy" && earlyCopy.definingClass.endsWith("/WatchLaterCardIdentity;")) {
+                "Scope copy must run immediately after Object.<init>, before parameter reuse"
+            }
             for (method in writtenBuilder.methods.filter { (it.name == "<init>" &&
                 it.parameterTypes == listOf(context.type)) || it.returnType == context.type }) {
                 check(method.implementation!!.instructions.any {
@@ -59,7 +67,16 @@ fun main(args: Array<String>) {
     }
     val workspace = Files.createTempDirectory("cep-watchlater-real-apk")
     Patcher(PatcherConfig(File(args[0]), workspace.toFile(), verifier = SdkDexVerifier(File(sdk)))).use { patcher ->
-        patcher += setOf(probe, gmsCoreSupportPatch)
+        val defaults = args.getOrNull(2)?.let { bundle ->
+            PatchLoader.Jar(setOf(File(bundle))).filter { patch ->
+                patch.default && patch.compatiblePackages?.any { (packageName, versions) ->
+                    packageName == "com.google.android.youtube" &&
+                        (versions == null || "21.20.405" in versions)
+                } == true
+            }.toSet()
+        }.orEmpty()
+        println("Selected ${defaults.size} default patches plus Watch later and GmsCore dependencies")
+        patcher += defaults + setOf(probe, gmsCoreSupportPatch)
         runBlocking { patcher().collect { result ->
             result.exception?.let { throw it }
             println("Applied: ${result.patch.name}")

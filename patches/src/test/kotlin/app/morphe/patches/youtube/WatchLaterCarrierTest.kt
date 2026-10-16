@@ -6,7 +6,9 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMuta
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patches.youtube.interaction.savetowatchlater.addWatchLaterScopeCarrier
 import app.morphe.patches.youtube.interaction.savetowatchlater.cloneWatchLaterBuilderMethod
+import app.morphe.patches.youtube.interaction.savetowatchlater.hookWatchLaterContextConstructor
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.Opcodes
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
 import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
@@ -17,8 +19,34 @@ import com.android.tools.smali.dexlib2.writer.pool.DexPool
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class WatchLaterCarrierTest {
+    @Test fun `serialized constructor copies scope before the incoming parameter becomes a primitive`() {
+        val dex = DexBackedDexFile(Opcodes.getDefault(), java.nio.ByteBuffer.wrap(watchLaterDexFixture()))
+        val ctor = dex.classes.single { it.type == "Lcep/fixture/Builder;" }.directMethods.single()
+        val instructions = ctor.implementation!!.instructions.toList()
+        assertEquals(3, ctor.implementation!!.registerCount)
+        assertEquals(Opcode.INVOKE_DIRECT, instructions[0].opcode)
+        assertEquals(Opcode.INVOKE_STATIC, instructions[1].opcode)
+        val copy = instructions[1] as com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+        assertEquals(2, copy.registerC) // original p1, before const/16 overwrites it
+        assertEquals(1, copy.registerD) // initialized p0
+        assertEquals(Opcode.CONST_16, instructions[instructions.size - 3].opcode)
+        assertEquals(Opcode.RETURN_VOID, instructions.last().opcode)
+        assertEquals(1, instructions.count { it.opcode == Opcode.INVOKE_STATIC })
+    }
+
+    @Test fun `unrecognized constructor entry fails instead of emitting unsafe bytecode`() {
+        val method = ImmutableMethod("Lfixture/Builder;", "<init>",
+            listOf(com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter("Ljava/lang/Object;", null, null)),
+            "V", AccessFlags.PUBLIC.value or AccessFlags.CONSTRUCTOR.value, null, null,
+            MutableMethodImplementation(3)).toMutable().apply {
+            addInstructions(0, "nop\ninvoke-direct { p0 }, Ljava/lang/Object;-><init>()V\nreturn-void")
+        }
+        assertFailsWith<IllegalStateException> { hookWatchLaterContextConstructor(method) }
+    }
+
     @Test fun `builder parameter clone replaces the serialized virtual method`() {
         val type = "Lfixture/Builder;"
         val method = ImmutableMethod(type, "build", emptyList(), "Ljava/lang/Object;",

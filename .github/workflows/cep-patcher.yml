@@ -47,7 +47,7 @@ jobs:
         run: |
           chmod +x gradlew manager/gradlew
           java tests/watchlater/WatchLaterRegression.java
-          ./gradlew :patches:test :patches:buildAndroid :patches:generatePatchesList --no-daemon --stacktrace -Pversion=1.47.0-cep.${{ github.run_number }}
+          ./gradlew :patches:test :patches:buildAndroid :patches:generatePatchesList :patches:generateWatchLaterDexFixtures --no-daemon --stacktrace -Pversion=1.47.0-cep.${{ github.run_number }}
           mkdir -p dist
           mapfile -t BUNDLES < <(find patches/build/libs -maxdepth 1 -name '*.mpp' ! -name '*sources*' ! -name '*javadoc*')
           test "${#BUNDLES[@]}" -eq 1
@@ -158,7 +158,7 @@ jobs:
             adb install $(find apks/debug -name '*.apk' | head -1)
             adb install $(find apks/androidTest/debug -name '*.apk' | head -1)
             timeout 180s adb shell am instrument -w io.github.b061raporlama.ceppatcher.debug.test/androidx.test.runner.AndroidJUnitRunner | tee instrumentation.txt
-            grep -q 'OK (3 tests)' instrumentation.txt
+            grep -q 'OK (5 tests)' instrumentation.txt
             ! grep -q 'FAILURES\|INSTRUMENTATION_FAILED\|Process crashed' instrumentation.txt
             adb exec-out run-as io.github.b061raporlama.ceppatcher.debug cat files/watch-later-overlay.png > watch-later-overlay.png
             adb shell wm size 1080x2400

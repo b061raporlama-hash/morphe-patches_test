@@ -19,3 +19,11 @@ JDK, Android SDK ve GitHub Packages bağımlılık erişimiyle:
 Bu kontrol patch uygulanabilirliğini ve DEX doğrulamasını sınar. YouTube sunucusunun gerçek kart düzenleri, hesabın Daha sonra izle listesine kayıt ve fiziksel telefonda gezinme ayrıca doğrulanmalıdır. Android UI regresyonları gerçek Android görünüm/span/overlay kodunu, sentetik Litho mount ve ağ verileriyle çalıştırır; gerçek YouTube çalıştırması olarak sunulmaz.
 
 `WatchLaterCarrierTest`, patcher'ın önceden açılmış tam/filtrelenmiş üye listeleriyle de kapsam alanını ve erişim yöntemlerini DEX'e yazıp tekrar okuyarak denetler. Alan eklenirken hem tam alan kümesi hem örnek alan kümesi güncellenir; erişim yöntemleri de tam ve sanal yöntem kümelerinde tutulur. Bu, bellek içindeki bir koleksiyonda görünen değişikliğin yazılan DEX'te kaybolmasını önler.
+
+## cep.14 açılış çökmesi ve ART kontrolü
+
+Fiziksel telefondan gelen beş günlük aynı hatayı gösterdi: `Lvbq;-><init>(Lvbr;)V`, `0xA7`, `v2 has type PositiveShortConstant but expected Reference java.lang.Object`. Kullanıcının ürettiği APK'nın `classes9.dex` dosyasında `0xA3` komutu `v2`/`p1` değerini `1023` yapıyor; `0xA7`'ye eklenen `copy(p1,p0)` artık nesne yerine bu sayıyı geçiriyordu. Kopyalama çağrısının DEX'te bulunması ve SDK araçlarının başarılı olması, kurucunun ART'ta doğrulanabildiğini kanıtlamamıştı. Önceki arayüz testi bu gerçek DEX kurucusunu çalıştırmıyordu.
+
+Üretimdeki `hookWatchLaterContextConstructor`, çağrıyı doğrulanmış `Object.<init>()` komutundan hemen sonra ekler. Böylece `this` başlatılmıştır ve `p1` özgün nesnedir. Kurucu girişinin beklenen yapıda olmaması patch hatasıdır. Çıkışa çağrı eklenmez; kurucunun özgün register sayısı değişmez.
+
+`:patches:generateWatchLaterDexFixtures` üretimdeki `instrumentWatchLaterContextCopies` dönüşümünü küçük bir DEX'e uygular. Örnek hem kurucuda `p1`'i, hem `build` içinde `p0`'ı sayısal geçici register olarak kullanır. İkinci DEX cep.14 hatasının negatif kontrolüdür. `WatchLaterDexTest`, Android 15'te bunları `InMemoryDexClassLoader` ile yükler: eski kurucu ART tarafından reddedilmelidir; düzeltilen kurucu ve build çalışmalı, 40 kopyada kapsam/özgün veri korunmalı ve bağımsız/boş kapsamlar karışmamalıdır. Bu iki test yayın önkoşuludur. DEX dosyaları yalnız androidTest varlıklarına girer; release APK'ya girmez.

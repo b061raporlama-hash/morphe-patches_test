@@ -96,8 +96,21 @@ tasks {
         doFirst {
             setArgs(listOfNotNull(providers.gradleProperty("youtubeApk").orNull
                 ?: throw GradleException("Pass -PyoutubeApk=/path/to/original.apk"),
-                providers.gradleProperty("youtubeOutput").orNull))
+                providers.gradleProperty("youtubeOutput").orNull,
+                providers.gradleProperty("youtubeBundle").orNull.also {
+                    if (it != null) require(providers.gradleProperty("youtubeOutput").isPresent) {
+                        "youtubeBundle also requires youtubeOutput"
+                    }
+                }))
         }
+    }
+    register<JavaExec>("generateWatchLaterDexFixtures") {
+        group = "verification"
+        description = "Transforms real DEX methods for Android ART constructor/copy regression testing"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("app.morphe.patches.youtube.WatchLaterDexFixtureKt")
+        args(rootProject.layout.buildDirectory.dir("watchlater-dex").get().asFile.absolutePath)
     }
     // Used by gradle-semantic-release-plugin.
     publish {

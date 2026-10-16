@@ -407,6 +407,7 @@ android.sourceSets.getByName("androidTest").java.apply {
     srcDir(layout.buildDirectory.dir("generated/watchLaterTest/java").get().asFile)
     srcDir("../../tests/watchlater/android")
 }
+android.sourceSets.getByName("androidTest").assets.srcDir("../../build/watchlater-dex")
 tasks.matching { it.name == "preDebugAndroidTestBuild" }.configureEach {
     dependsOn(watchLaterTestSources)
 }
