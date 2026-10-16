@@ -48,7 +48,9 @@ jobs:
           java tests/watchlater/WatchLaterRegression.java
           ./gradlew :patches:test :patches:buildAndroid :patches:generatePatchesList --no-daemon --stacktrace -Pversion=1.47.0-cep.${{ github.run_number }}
           mkdir -p dist
-          cp patches/build/libs/patches-*.mpp dist/cep-patches.mpp
+          mapfile -t BUNDLES < <(find patches/build/libs -maxdepth 1 -name '*.mpp' ! -name '*sources*' ! -name '*javadoc*')
+          test "${#BUNDLES[@]}" -eq 1
+          cp "${BUNDLES[0]}" dist/cep-patches.mpp
           cp dist/cep-patches.mpp manager/app/src/main/assets/cep-patches.mpp
           cp patches-list.json dist/patches-list.json
       - name: Restore persistent Cep Patcher signing key

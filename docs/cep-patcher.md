@@ -40,7 +40,7 @@ Morphe bağımlılıkları için bile okuma kimlik doğrulaması gerekir. Yerel 
 ```sh
 java tests/watchlater/WatchLaterRegression.java
 ./gradlew :patches:test :patches:buildAndroid :patches:generatePatchesList
-cp patches/build/libs/patches-*.mpp manager/app/src/main/assets/cep-patches.mpp
+cp patches/build/libs/patches-1.47.0.mpp manager/app/src/main/assets/cep-patches.mpp
 ```
 
 Sonra `manager/` dizinini Android Studio'da açın veya:
