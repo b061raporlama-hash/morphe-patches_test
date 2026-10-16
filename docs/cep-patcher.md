@@ -1,5 +1,16 @@
 # Cep Patcher
 
+## Yayımlanan ve doğrulanan sürüm
+
+- [Cep Patcher 1.0.3 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.3/cep-patcher.apk) — 30.124.745 bayt; dört Android işlemci mimarisini içerir.
+- [Başarılı Gradle/Android test ve yayın çalışması](https://github.com/b061raporlama-hash/morphe-patches_test/actions/runs/38860098604).
+- APK ve kaynak arşivi commit'i: `93630c8ef`; patch paketi: `1.47.0-cep.3`.
+- 31 Watch later regresyon kontrolü ve 415 yönetici birim testi geçti. Patch Kotlin testlerinde 3 geçti, gerçek APK girdisi isteyen 5 test atlandı.
+- Release lint: sıfır hata; 124 uyarı ve 2 bilgi notu var. Tam rapor Actions `cep-check-reports` çıktısında bulunur.
+- Android 15 emülatöründe bir instrumentation testi geçti: gerçek DEX yükleyicisi, patch bağımlılıkları, ilk açılışta Room kaydı, kaynak adresi ve patch listesi denetlendi. Bu test debug test APK'sını kullanır; fiziksel telefonda release APK ve YouTube patch işlemi henüz denenmedi.
+- Yayımlanan APK'nın Android imzası yerel `apksigner verify` ile de doğrulandı. SHA-256: `ab6fd97c7da0cd4fa963341738c1a55a872b4b77eb80f551bb7fbed17f5a3890`.
+- Herkese açık, tokensız APK ve `.mpp` indirmelerinin hash'leri test edilmiş Actions çıktılarıyla eşleşti. APK'ya gömülü paket, yayımlanan güncelleme paketiyle birebir aynı.
+
 Bu, Morphe Manager'ın bağımsız ve değiştirilmiş bir türevidir. Resmî Morphe sürümü değildir.
 Android uygulama kimliği: `io.github.b061raporlama.ceppatcher`; Android 8.0+ (API 26).
 Üst kaynak, sabit commit ve değişiklikler: [manager/UPSTREAM.md](../manager/UPSTREAM.md).
