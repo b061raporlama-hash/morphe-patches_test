@@ -301,13 +301,15 @@ public final class WatchLaterShortcutsPatch {
                     Card card = iterator.next();
                     View host = card.host.get();
                     card.videoId = null;
-                    card.button.setVisibility(View.GONE);
                     if (host == null || !host.isAttachedToWindow()) {
                         layer.removeView(card.button);
                         iterator.remove();
                     }
                 }
-                if (!show) return true;
+                if (!show) {
+                    for (Card card : cards) card.button.setVisibility(View.GONE);
+                    return true;
+                }
                 Map<View, Boolean> visited = new java.util.IdentityHashMap<>();
                 List<View> candidates = new ArrayList<>();
                 for (View host : hosts) {
@@ -334,6 +336,11 @@ public final class WatchLaterShortcutsPatch {
                     card.button.setTranslationX(left - rootLocation[0]);
                     card.button.setTranslationY(top - rootLocation[1]);
                     card.button.setVisibility(View.VISIBLE);
+                }
+                // Commit hidden state once, after computing targets. Toggling GONE -> VISIBLE
+                // every pre-draw requests another layout forever and prevents UI idleness.
+                for (Card card : cards) {
+                    if (card.videoId == null) card.button.setVisibility(View.GONE);
                 }
             } catch (Exception ex) {
                 for (Card card : cards) card.button.setVisibility(View.GONE);

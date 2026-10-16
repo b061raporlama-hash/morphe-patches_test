@@ -157,7 +157,7 @@ jobs:
             adb shell pidof io.github.b061raporlama.ceppatcher
             adb install $(find apks/debug -name '*.apk' | head -1)
             adb install $(find apks/androidTest/debug -name '*.apk' | head -1)
-            adb shell am instrument -w io.github.b061raporlama.ceppatcher.debug.test/androidx.test.runner.AndroidJUnitRunner | tee instrumentation.txt
+            timeout 180s adb shell am instrument -w io.github.b061raporlama.ceppatcher.debug.test/androidx.test.runner.AndroidJUnitRunner | tee instrumentation.txt
             grep -q 'OK (3 tests)' instrumentation.txt
             ! grep -q 'FAILURES\|INSTRUMENTATION_FAILED\|Process crashed' instrumentation.txt
             adb exec-out run-as io.github.b061raporlama.ceppatcher.debug cat files/watch-later-overlay.png > watch-later-overlay.png

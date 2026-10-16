@@ -103,7 +103,7 @@ public class WatchLaterOverlayTest {
         return result;
     }
 
-    @Test public void mountedCardsShowClocksSaveTheirOwnIdsAndFollowRecycling() throws Exception {
+    @Test(timeout = 60_000) public void mountedCardsShowClocksSaveTheirOwnIdsAndFollowRecycling() throws Exception {
         activity = instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),
                 WatchLaterFixtureActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         try {
