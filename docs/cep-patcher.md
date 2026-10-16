@@ -1,5 +1,16 @@
 # Cep Patcher
 
+## Doğrulanan güncel sürüm: 1.0.6
+
+- [Cep Patcher 1.0.6 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.6/cep-patcher.apk).
+- [Başarılı derleme ve kurulum kontrolleri](https://github.com/b061raporlama-hash/morphe-patches_test/actions/runs/38909678701); APK kaynak commit'i `75eccb830`, patch sürümü `1.47.0-cep.6`.
+- 419 yönetici birim testi ve 31 Watch later regresyon kontrolü geçti. Patch Kotlin testlerinde 3 geçti, gerçek APK isteyen 5 test atlandı. Release lint: 0 hata, 124 uyarı, 2 bilgi notu.
+- Android 15'te eski Morphe paketlerini temsil eden farklı imzalı test APK'larıyla `INSTALL_FAILED_UPDATE_INCOMPATIBLE` yeniden üretildi. Üretimdeki clone/GmsCore manifest kodundan çıkan `app.cep.android.youtube` test APK'sı kurulup aynı anahtarla yeniden yüklenebildi; eski Morphe paketlerinin yolları değişmedi.
+- Gerçek, imzalı Cep Patcher release APK'sı da bu paketler kurulu tutulurken yüklenip başlatıldı. İki instrumentation testi gömülü paketin DEX yüklemesini, kaynak kaydını ve eski salt-okunur gömülü paketin çevrimdışı yenilenmesini doğruladı.
+- Yönetici imzalama sertifikası 1.0.3 ile aynı. APK SHA-256: `ef225d9c98c2a0eaeba070b9c77f36ec9ad061eb81fefeef036bd66be4604bf5`.
+- APK'daki gömülü `.mpp`, yayımlanan güncelleme paketiyle birebir aynı; Custom branding varsayılan adı `Cep YouTube` olarak doğrulandı.
+- Sentetik kurulum testi gerçek YouTube'un tüm yamalarını veya fiziksel telefondaki oynatma, hesap, Watch later ve root/Shizuku davranışını doğrulamaz.
+
 ## Morphe ile yan yana kurulum
 
 Yerleşik Cep Patches kaynağındaki **GmsCore support**, YouTube için artık `app.cep.android.youtube`
@@ -22,7 +33,7 @@ Cep kimlikli APK ve sonraki aynı anahtarlı yükleme başarıyla kurulmalıdır
 release APK'sı da bu eski paketlerle birlikte kurulup başlatılır. Bu test gerçek YouTube APK'sının
 işlevlerini veya fiziksel telefon davranışını doğrulamaz.
 
-## Yayımlanan ve doğrulanan sürüm
+## Önceki sürüm 1.0.3 doğrulaması
 
 - [Cep Patcher 1.0.3 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.3/cep-patcher.apk) — 30.124.745 bayt; dört Android işlemci mimarisini içerir.
 - [Başarılı Gradle/Android test ve yayın çalışması](https://github.com/b061raporlama-hash/morphe-patches_test/actions/runs/38860098604).
