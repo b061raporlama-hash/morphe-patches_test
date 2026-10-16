@@ -27,13 +27,21 @@ public class WatchLaterDexTest {
 
     @Test public void oldReturnHookIsRejectedByArt() throws Exception {
         ClassLoader loader = load("watchlater-broken.dex");
+        Throwable rejected = null;
         try {
-            // Reflection triggers verification even if class loading was initially deferred.
-            loader.loadClass("cep.fixture.Builder").getDeclaredConstructors();
-            fail("ART must reject cep.14's primitive argument to copy(Object,Object)");
+            // ART can defer verification through loadClass AND getDeclaredConstructors.
+            // Invoke the invalid constructor, exactly as YouTube's startup does.
+            Class<?> context = loader.loadClass("cep.fixture.Context");
+            Object root = context.getConstructor().newInstance();
+            loader.loadClass("cep.fixture.Builder").getConstructor(context).newInstance(root);
         } catch (VerifyError expected) {
-            assertTrue(expected.toString(), expected.toString().contains("cep.fixture.Builder"));
+            rejected = expected;
+        } catch (java.lang.reflect.InvocationTargetException wrapped) {
+            rejected = wrapped.getCause();
         }
+        assertNotNull("ART must reject cep.14's primitive argument to copy(Object,Object)", rejected);
+        assertTrue(rejected.toString(), rejected instanceof VerifyError);
+        assertTrue(rejected.toString(), rejected.toString().contains("cep.fixture.Builder"));
     }
 
     @Test public void transformedConstructorAndBuildPreserveScopeDespiteParameterReuse() throws Exception {
