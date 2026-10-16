@@ -27,7 +27,12 @@ fun main(args: Array<String>) {
                 it.name == "<init>" && it.parameterTypes == listOf(context.type)
             } && c.methods.any { it.returnType == context.type && it.parameterTypes.isEmpty() } }
             for (owner in listOf(context, builder)) {
-                check(owner.fields.any { it.name == "cep_watchLaterScope" })
+                check(owner.fields.any { it.name == "cep_watchLaterScope" }) {
+                    "Missing scope field in ${owner.type}"
+                }
+                check(owner.instanceFields.any { it.name == "cep_watchLaterScope" }) {
+                    "Missing serialized instance field in ${owner.type}"
+                }
                 check(owner.methods.any { it.name == "patch_getWatchLaterScope" })
                 check(owner.methods.any { it.name == "patch_setWatchLaterScope" })
             }

@@ -17,3 +17,5 @@ JDK, Android SDK ve GitHub Packages bağımlılık erişimiyle:
 Çıktı parametresi isteğe bağlıdır. Görev Watch later, bağımlılıkları ve GmsCore support patch'lerini uygular; gerçek bağlam/oluşturucudaki alanları, erişim yöntemlerini ve her iki kopyalama kancasını denetler. Patcher sonuçları Android SDK DEX doğrulamasından geçirilir. APK ve çalışma dosyaları yerel kalır; kaynak veya Release'e yüklenmez.
 
 Bu kontrol patch uygulanabilirliğini ve DEX doğrulamasını sınar. YouTube sunucusunun gerçek kart düzenleri, hesabın Daha sonra izle listesine kayıt ve fiziksel telefonda gezinme ayrıca doğrulanmalıdır. Android UI regresyonları gerçek Android görünüm/span/overlay kodunu, sentetik Litho mount ve ağ verileriyle çalıştırır; gerçek YouTube çalıştırması olarak sunulmaz.
+
+`WatchLaterCarrierTest`, patcher'ın önceden açılmış tam/filtrelenmiş üye listeleriyle de kapsam alanını ve erişim yöntemlerini DEX'e yazıp tekrar okuyarak denetler. Alan eklenirken hem tam alan kümesi hem örnek alan kümesi güncellenir; erişim yöntemleri de tam ve sanal yöntem kümelerinde tutulur. Bu, bellek içindeki bir koleksiyonda görünen değişikliğin yazılan DEX'te kaybolmasını önler.

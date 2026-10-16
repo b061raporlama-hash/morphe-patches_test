@@ -24,6 +24,27 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 private const val CARRIER = "Lapp/morphe/extension/youtube/patches/watchlater/WatchLaterScopeCarrier;"
 private const val IDENTITY = "Lapp/morphe/extension/youtube/patches/watchlater/WatchLaterCardIdentity;"
 
+internal fun addWatchLaterScopeCarrier(clazz: MutableClass) {
+    val field = ImmutableField(clazz.type, "cep_watchLaterScope", "Ljava/lang/Object;",
+        AccessFlags.PRIVATE.value or AccessFlags.VOLATILE.value, null, null, null).toMutable()
+    // MutableClass caches the full and filtered sets separately. Keep both views
+    // consistent even if another patch already materialized instanceFields.
+    clazz.fields.add(field)
+    clazz.instanceFields.add(field)
+    clazz.interfaces.add(CARRIER)
+    clazz.methods.add(ImmutableMethod(clazz.type, "patch_getWatchLaterScope", emptyList(),
+        "Ljava/lang/Object;", AccessFlags.PUBLIC.value or AccessFlags.FINAL.value, null, null,
+        MutableMethodImplementation(2)).toMutable().apply {
+        addInstructions(0, "iget-object v0, p0, $field\nreturn-object v0")
+    }.also { clazz.virtualMethods.add(it) })
+    clazz.methods.add(ImmutableMethod(clazz.type, "patch_setWatchLaterScope",
+        listOf(ImmutableMethodParameter("Ljava/lang/Object;", null, null)), "V",
+        AccessFlags.PUBLIC.value or AccessFlags.FINAL.value, null, null,
+        MutableMethodImplementation(2)).toMutable().apply {
+        addInstructions(0, "iput-object p1, p0, $field\nreturn-void")
+    }.also { clazz.virtualMethods.add(it) })
+}
+
 /** Preserve a per-card scope through real ConversionContext copies, independent of path hashes. */
 internal val watchLaterContextPatch = bytecodePatch {
     dependsOn(sharedExtensionPatch, conversionContextPatch)
@@ -35,25 +56,8 @@ internal val watchLaterContextPatch = bytecodePatch {
                 clazz.methods.any { it.parameterTypes.isEmpty() && it.returnType == context.type }
         }
 
-        fun addCarrier(clazz: MutableClass) {
-            val field = ImmutableField(clazz.type, "cep_watchLaterScope", "Ljava/lang/Object;",
-                AccessFlags.PRIVATE.value or AccessFlags.VOLATILE.value, null, null, null).toMutable()
-            clazz.instanceFields.add(field)
-            clazz.interfaces.add(CARRIER)
-            clazz.methods.add(ImmutableMethod(clazz.type, "patch_getWatchLaterScope", emptyList(),
-                "Ljava/lang/Object;", AccessFlags.PUBLIC.value or AccessFlags.FINAL.value, null, null,
-                MutableMethodImplementation(2)).toMutable().apply {
-                addInstructions(0, "iget-object v0, p0, $field\nreturn-object v0")
-            })
-            clazz.methods.add(ImmutableMethod(clazz.type, "patch_setWatchLaterScope",
-                listOf(ImmutableMethodParameter("Ljava/lang/Object;", null, null)), "V",
-                AccessFlags.PUBLIC.value or AccessFlags.FINAL.value, null, null,
-                MutableMethodImplementation(2)).toMutable().apply {
-                addInstructions(0, "iput-object p1, p0, $field\nreturn-void")
-            })
-        }
-        addCarrier(context)
-        addCarrier(builder)
+        addWatchLaterScopeCarrier(context)
+        addWatchLaterScopeCarrier(builder)
 
         builder.methods.single { it.name == "<init>" && it.parameterTypes == listOf(context.type) }.apply {
             // Constructor in the supported APK has one local plus p0/p1.

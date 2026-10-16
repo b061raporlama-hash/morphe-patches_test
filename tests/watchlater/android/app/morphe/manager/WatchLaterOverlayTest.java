@@ -124,6 +124,7 @@ public class WatchLaterOverlayTest {
     }
 
     @Test(timeout = 60_000) public void mountedCardsShowClocksSaveTheirOwnIdsAndFollowRecycling() throws Exception {
+        ContextInterface[] delayed = new ContextInterface[1];
         activity = instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),
                 WatchLaterFixtureActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         try {
@@ -195,10 +196,22 @@ public class WatchLaterOverlayTest {
                 assertEquals("morphe_watch_later_shortcuts_add", buttons.get(0).getContentDescription());
                 buttons.get(0).performClick();
                 assertEquals("abc_def-123", SaveToWatchLaterRequest.ids.get(2));
-                first.texts = List.of(title("card-D", null));
+                String path = "feed|video_lockup_with_attachment.eml-fe|late-template|";
+                ContextInterface root = context(path);
+                WatchLaterShortcutsPatch.bindContext(root, null);
+                delayed[0] = child(root, path + "ContainerType|TextType|");
+                first.texts = List.of(WatchLaterShortcutsPatch.onLithoTextLoaded(delayed[0], "Late title"));
             });
             draw();
             instrumentation.runOnMainSync(() -> assertEquals("Unidentified recycled card must hide its clock", 1, visibleButtons().size()));
+            // The title is already mounted: a later thumbnail observation updates its own
+            // scope without requiring another text load or attaching a different video's ID.
+            instrumentation.runOnMainSync(() -> WatchLaterShortcutsPatch.bindContext(delayed[0], "abc_def-123"));
+            draw();
+            instrumentation.runOnMainSync(() -> assertEquals("Late identity makes the existing span usable", 2, visibleButtons().size()));
+            instrumentation.runOnMainSync(() -> WatchLaterShortcutsPatch.bindContext(delayed[0], "12345678901"));
+            draw();
+            instrumentation.runOnMainSync(() -> assertEquals("Conflicting identity hides the existing span", 1, visibleButtons().size()));
             instrumentation.runOnMainSync(() -> second.setTranslationY(screen.getHeight()));
             draw();
             instrumentation.runOnMainSync(() -> assertEquals("Clipped/off-screen cards must not leave a floating clock", 0, visibleButtons().size()));
