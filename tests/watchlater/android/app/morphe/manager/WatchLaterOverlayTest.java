@@ -37,13 +37,25 @@ public class WatchLaterOverlayTest {
     private int cardHeight;
 
     private static ContextInterface context(String path) {
+        return context(new StringBuilder(path));
+    }
+
+    private static ContextInterface context(StringBuilder path) {
         return new ContextInterface() {
-            final StringBuilder builder = new StringBuilder(path);
             public String patch_getIdentifier() { return "home_video_with_context.e"; }
-            public StringBuilder patch_getPathBuilder() { return builder; }
+            public StringBuilder patch_getPathBuilder() { return path; }
             public Integer patch_getHeightConstraint() { return null; }
             public Object patch_getHorizontalCollectionSwipeProtector() { return null; }
         };
+    }
+
+    private static CharSequence sharedTemplateTitle(String text, String id) {
+        StringBuilder path = new StringBuilder("feed|video_lockup_with_attachment.eml-fe|c0c4a49b6544b5fb|");
+        WatchLaterShortcutsPatch.bindContext(context(path), id);
+        path.append("ContainerType|TextType|");
+        ContextInterface child = context(path);
+        WatchLaterShortcutsPatch.bindContext(child, null);
+        return WatchLaterShortcutsPatch.onLithoTextLoaded(child, text);
     }
 
     private static CharSequence title(String hash, String id) {
@@ -111,8 +123,9 @@ public class WatchLaterOverlayTest {
                 measured = new ComponentHost(activity);
                 measured.nullContent = true; // Not every mount host provides TextContent.
                 screen.addView(measured, new FrameLayout.LayoutParams(-1, cardHeight * 2));
-                first = card(0, title("card-A", "abcdefghijk"));
-                second = card(cardHeight, title("card-B", "12345678901"));
+                // These two distinct videos have the SAME template identifier/hash.
+                first = card(0, sharedTemplateTitle("Title A", "abcdefghijk"));
+                second = card(cardHeight, sharedTemplateTitle("Title B", "12345678901"));
                 WatchLaterShortcutsPatch.onLithoViewMeasured(measured);
             });
             draw();
