@@ -1,6 +1,17 @@
 # Cep Patcher
 
-## Doğrulanan güncel sürüm: 1.0.6
+## Doğrulanan güncel sürüm: 1.0.11
+
+- [Cep Patcher 1.0.11 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.11/cep-patcher.apk).
+- [Başarılı Gradle, Android ve yayın çalışması](https://github.com/b061raporlama-hash/morphe-patches_test/actions/runs/38918969562); APK kaynak commit'i `902f4f83f`, patch sürümü `1.47.0-cep.11`.
+- Eksik saat simgeleri için kart bağlamı aktarımı, iç içe kart keşfi, boş metin taşıyıcıları ve çizim döngüsü düzeltildi. Aynı şablonu paylaşan kartlar yalnız metin anahtarına göre eşleştirilmez; çelişkili kimliklerde kayıt düğmesi gizlenir.
+- 48 Watch later regresyon kontrolü ve 419 yönetici birim testi geçti. Patch Kotlin testlerinde 3 geçti, gerçek APK isteyen 5 test atlandı. Release lint: 0 hata, 124 uyarı, 2 bilgi notu.
+- Android 15'te **3 instrumentation testi** geçti (2,495 saniye): gerçek bundle yükleyicisi, çevrimdışı kaynak yükseltme ve üretimdeki saat arayüzü. Arayüz testi aynı şablona sahip iki farklı kartta iki saat, gerçek ekran dokunuşu, doğru kimliğe kayıt isteği, kart geri dönüşümü, kimliksiz/ekran dışı kartları ve oynatıcı/Shorts ekranında gizlemeyi doğruladı. Ağ ve Litho mount verileri sentetiktir; gerçek Android görünümleri/span/overlay/kaydetme kodu kullanılır. `cep-android-loader-result` çıktısındaki ekran görüntüsü de kontrol edildi.
+- Eski Morphe test paketleri korunarak Cep YouTube test APK'sı ve gerçek imzalı Cep Patcher APK'sı yan yana kuruldu. İmzalama sertifikası önceki sürümlerle aynı. APK SHA-256: `eb32d674df970cb5a1268c47902666a9934897f41191af66296c58b19b8ac708`.
+- Düzeltme mevcut YouTube'a kendiliğinden eklenmez: **Cep Patcher'ı verilerini silmeden güncelleyin**, kaynak sürümünün `1.47.0-cep.11` olduğunu kontrol edin, desteklenen orijinal YouTube APK'sını **Watch later shortcuts** seçili şekilde yeniden yamalayın ve yeni Cep YouTube APK'sını mevcut kurulumun üzerine kurun.
+- Kullanıcı önceki sürümde telefona kurulumu ve alt menü kısayolunu doğruladı. Bu sürümün saat simgeleri, gerçek YouTube hesabına kayıt, sunucu kontrollü kart düzenleri ve root/Shizuku davranışı fiziksel telefonda henüz doğrulanmadı.
+
+## Önceki sürüm 1.0.6 doğrulaması
 
 - [Cep Patcher 1.0.6 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.6/cep-patcher.apk).
 - [Başarılı derleme ve kurulum kontrolleri](https://github.com/b061raporlama-hash/morphe-patches_test/actions/runs/38909678701); APK kaynak commit'i `75eccb830`, patch sürümü `1.47.0-cep.6`.
