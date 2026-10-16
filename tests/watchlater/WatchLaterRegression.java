@@ -134,6 +134,12 @@ class WatchLaterRegression {
                             check("abcdefghijk".equals(cards.resolve(childContext, sharedPath, sharedPath)));
                             check(cards.resolve(new StringBuilder(sameTemplate + "TextType|")) == null);
                             check(cards.resolve(rootContext, sharedPath, "feed|video_lockup_with_attachment.eml-fe|DIFFERENT|TextType|") == null);
+                            cards.observe(childContext, sharedPath, sharedPath, "12345678901");
+                            check(cards.resolve(childContext, sharedPath, sharedPath) == null);
+                            sharedPath.setLength(sameTemplate.length());
+                            cards.observe(rootContext, sharedPath, sharedPath, "abc_def-123");
+                            sharedPath.append("ContainerType|TextType|");
+                            check("abc_def-123".equals(cards.resolve(new Object(), sharedPath, sharedPath)));
                             save("abcdefghijk"); save("abcdefghijk"); save("12345678901");
                             check(Utils.workers.size() == 2);
                             Utils.drain();

@@ -296,7 +296,7 @@ public final class WatchLaterShortcutsPatch {
                 FrameLayout window = root.get();
                 boolean show = window != null && window.hasWindowFocus() && isEnabled()
                         && !PlayerType.getCurrent().isMaximizedOrFullscreen() && !ShortsPlayerState.isOpen();
-                if (window != null) window.getLocationOnScreen(rootLocation);
+                if (window != null) layer.getLocationOnScreen(rootLocation);
                 for (Iterator<Card> iterator = cards.iterator(); iterator.hasNext();) {
                     Card card = iterator.next();
                     View host = card.host.get();

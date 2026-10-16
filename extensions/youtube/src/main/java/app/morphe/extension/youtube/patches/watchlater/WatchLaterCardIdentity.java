@@ -48,6 +48,16 @@ public final class WatchLaterCardIdentity {
         // thumbnail identity observed on the parent before text creation runs.
         if (root && videoId == null) cards.put(key, null);
         if (videoId != null) {
+            Binding previous = scopes.get(builder);
+            if (previous == null || !key.equals(previous.path)) previous = scopes.get(context);
+            if (!root && previous != null && key.equals(previous.path)
+                    && !videoId.equals(previous.videoId)) {
+                Binding ambiguous = new Binding(key, null);
+                if (context != null) scopes.put(context, ambiguous);
+                if (builder != null) scopes.put(builder, ambiguous);
+                cards.put(key, null);
+                return;
+            }
             Binding binding = new Binding(key, videoId);
             if (context != null) scopes.put(context, binding);
             if (builder != null) scopes.put(builder, binding);
