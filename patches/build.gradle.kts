@@ -4,12 +4,12 @@ group = "app.morphe"
 
 patches {
     about {
-        name = "Morphe Patches"
-        description = "Patches for Morphe"
-        source = "git@github.com:MorpheApp/morphe-patches.git"
-        author = "MorpheApp"
+        name = "Cep Patches"
+        description = "Independent Morphe patches derivative with Watch later shortcuts"
+        source = "https://github.com/b061raporlama-hash/morphe-patches_test"
+        author = "b061raporlama-hash; upstream Morphe contributors"
         contact = "na"
-        website = "https://morphe.software"
+        website = "https://github.com/b061raporlama-hash/morphe-patches_test"
         license = "GNU General Public License v3.0, with additional GPL section 7 requirements"
     }
 }

@@ -35,3 +35,7 @@ google-services.json
 
 # NPM modules
 node_modules/
+
+# Cep Patcher bundles are built from this tree by the combined APK workflow.
+manager/app/src/main/assets/cep-patches.mpp
+dist/
