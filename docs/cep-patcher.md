@@ -1,24 +1,17 @@
 # Cep Patcher
 
-## 1.0.17 adayı: gerçek kartlarda geç gelen kimlik
+## Doğrulanan güncel sürüm: 1.0.17
 
-Saatlerin ilk karttan sonra kaybolmasının çalışma zamanı nedeni gerçek YouTube 21.20.405'te doğrulandı:
-alt bağlamlar, üst bağlamın video kimliği henüz boşken kopyalanıyordu. Kapsam artık yalnız o andaki değeri
-kopyalamaz; kart ailesindeki kaynak düğümle bağlantısını tutar. Sonradan gelen kimlik önceden hazırlanmış
-metinden okunabilir. Yeni kart girişinde önceki kartın zinciri kesilir; aynı şablon farklı kartları birleştirmez.
-Belirsiz/çelişkili kimlikte kayıt düğmesi gizlenir. Oluşturucu için cep.14 açılış düzeltmesi korunur.
+- [Cep Patcher 1.0.17 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.17/cep-patcher.apk); [Release ve kaynak arşivi](https://github.com/b061raporlama-hash/morphe-patches_test/releases/tag/cep-v1.0.17).
+- [Başarılı Gradle, Android ve yayın çalışması](https://github.com/b061raporlama-hash/morphe-patches_test/actions/runs/39014138278). Kaynak commit'i `03d4960dc`, gömülü patch sürümü `1.47.0-cep.17`.
+- İlk karttan sonra kaybolan saatlerin nedeni gerçek YouTube 21.20.405'te doğrulandı: alt bağlamlar, üst bağlamın video kimliği henüz boşken kopyalanıyordu. Kapsam artık kart ailesindeki kaynak düğüme bağlı kalır; kimlik metin hazırlandıktan sonra gelse de bulunur. Yeni kart girişinde önceki kartın zinciri kesilir; aynı şablonu kullanan farklı videoların kimlikleri karışmaz. Belirsiz veya çelişkili kimlikte kayıt düğmesi gizlenir. cep.14 açılış düzeltmesi de korunur.
+- 219 Watch later regresyon kontrolü geçti. Android 15 yayın kapısındaki 5 instrumentation testi ve xxhdpi tekrarındaki 1 test geçti. Testler ART üzerinde gerçek DEX dönüşümünü, kimlikten önce kopyalanan bağlamları, geri dönüşümde kapsamların ayrılmasını ve saat arayüzünü çalıştırdı. 419 yönetici birim testi geçti; 7 Kotlin testi geçti, YouTube Music APK'sı gerektiren 5 test atlandı. Release lint: 0 hata, 124 uyarı.
+- Orijinal YouTube 21.20.405 APK'sı normal Gradle üretim göreviyle 96 varsayılan yama ve seçili Watch later yaması kullanılarak yamalandı; 12 DEX SDK doğrulamasından geçti. Yalnız yerel test anahtarıyla imzalanan bu APK Android 15 / x86_64 emülatörüne kuruldu ve açıldı; `VerifyError` oluşmadı. Saat simgesi ana akıştaki farklı video kartlarında altı kaydırma boyunca, yukarı dönünce yeniden ana kart bölgesinde ve NASA arama sonucunda görüldü. Emülatöre kurulan 1.0.17 Cep Patcher'da yerleşik kaynak **Cep Patches**, `1.47.0-cep.17`, 171 yama ve 3 hedef uygulama olarak yüklendi. Gerçek YouTube APK'sı hiçbir yerde yayımlanmaz.
+- Yayın APK'sı 30.138.905 bayt; SHA-256 `033ac026351c9f399ba06c1fc2e46ab1af2ffbc5c74f84085981e22cde27f7c5`. İmzalama sertifikası önceki Cep Patcher ile aynı (`86dbe39f7c6ef88314846f96e392e6baaf1285491f8d3eb473bf67e34fc969fc`). APK'ya gömülü MPP, Release'teki `cep-patches.mpp` ile aynı; SHA-256 `471a95a067d111c13b6f518898a288f51573dfd4d85f041441190dbd8476cfb0`. Herkese açık son sürüm beslemesi tokensız indirilip test edildi ve `1.47.0-cep.17` döndürdü.
+- Güncellemek için Cep Patcher'ı mevcut uygulama verilerini silmeden kurun. Patch kaynağının `1.47.0-cep.17` olduğunu kontrol edin; **orijinal desteklenen YouTube APK'sını** seçin, **Watch later shortcuts** yamasını işaretleyip yeniden yamalayın ve yeni Cep YouTube APK'sını kurun. Yönetici güncellemesi daha önce üretilmiş YouTube APK'sını değiştirmez. Eski `app.morphe.android.youtube` ve Morphe Manager kurulumları kalabilir.
+- Emülatörde gerçek hesapla listeye kaydetme, fiziksel Android telefonda davranış, ARM cihaz ve root/Shizuku kurulumu doğrulanmadı. Yerel test anahtarıyla üretilen YouTube APK'sı bu nedenle paylaşılmaz.
 
-219 regresyon kontrolü geçti. Android UI/ART kontrolleri de kimlikten önce üretilen alt bağlam ve metni
-sınayacak biçimde güncellendi. Yerel Android 15 / x86_64 / 720×1280 testinde gerçek YouTube ana sayfasında
-farklı videolarda saatler görüldü; altı kaydırma sonrası ilk videoya dönüşte saat kaldı. Arama sonuçlarında da
-saat doğrulandı. Bu deneme, orijinal APK'dan 96 varsayılan yama ve Watch later ile üretilen APK'nın kimlik
-sınıflarına güncel kaynak derlemesi yerleştirilerek, yalnız yerel test anahtarıyla yapıldı. YouTube APK'sı
-yayımlanmaz. Oturum açılmadı; gerçek hesapta kayıt ve fiziksel telefon davranışı henüz doğrulanmadı.
-
-Yayın APK'sı ve gömülü paket, yeni kaynaklardan Actions tarafından yeniden derlenir; Android yayın kapısı
-başarılı olmadan Release oluşturulmaz. Sürüm sonuçları yayın tamamlandıktan sonra bu sayfaya eklenir.
-
-## Doğrulanan güncel sürüm: 1.0.16
+## Önceki sürüm: 1.0.16
 
 - [Cep Patcher 1.0.16 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.16/cep-patcher.apk); [Release ve karşılık gelen kaynak](https://github.com/b061raporlama-hash/morphe-patches_test/releases/tag/cep-v1.0.16).
 - [Başarılı Gradle, Android ve yayın çalışması](https://github.com/b061raporlama-hash/morphe-patches_test/actions/runs/38983933158). APK kaynak commit'i `636d36da1`, gömülü patch sürümü `1.47.0-cep.16`.
