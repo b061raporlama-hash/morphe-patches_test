@@ -37,6 +37,7 @@ public class WatchLaterOverlayTest {
     private ComponentHost first;
     private ComponentHost second;
     private int cardHeight;
+    private ContextInterface previousTemplateRoot;
 
     private static ContextInterface context(String path) {
         return context(new StringBuilder(path));
@@ -65,15 +66,24 @@ public class WatchLaterOverlayTest {
         return child;
     }
 
-    private static CharSequence sharedTemplateTitle(CharSequence text, String id) {
+    private CharSequence sharedTemplateTitle(CharSequence text, String id) {
         String path = "feed|video_lockup_with_attachment.eml-fe|c0c4a49b6544b5fb|";
-        ContextInterface root = context(path);
-        WatchLaterShortcutsPatch.bindContext(root, id);
-        ContextInterface child = child(root, path + "ContainerType|TextType|");
+        ContextInterface entry = context(path);
+        ContextInterface builder = context(path);
+        ContextInterface root = context(path + "CellType|");
+        // Real 21.20.405 starts filtering here, with the parent's scope copied
+        // in. A callback at the bare prefix is not guaranteed to occur.
+        if (previousTemplateRoot != null) WatchLaterCardIdentity.copy(previousTemplateRoot, entry);
+        WatchLaterCardIdentity.copy(entry, builder);
+        WatchLaterCardIdentity.copy(builder, root);
+        previousTemplateRoot = root;
+        ContextInterface child = child(root, path + "CellType|ContainerType|TextType|");
         CharSequence marked = WatchLaterShortcutsPatch.onLithoTextLoaded(child, text);
+        // YouTube creates/copies child contexts BEFORE the root filter supplies the ID.
+        WatchLaterShortcutsPatch.bindContext(root, id);
         // Cached text is visited repeatedly through NEW copied conversion contexts.
         for (int i = 0; i < 30; i++) {
-            child = child(root, path + "ContainerType|TextType|");
+            child = child(root, path + "CellType|ContainerType|TextType|");
             marked = WatchLaterShortcutsPatch.onLithoTextLoaded(child, marked);
         }
         return marked;

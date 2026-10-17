@@ -1,5 +1,23 @@
 # Cep Patcher
 
+## 1.0.17 adayı: gerçek kartlarda geç gelen kimlik
+
+Saatlerin ilk karttan sonra kaybolmasının çalışma zamanı nedeni gerçek YouTube 21.20.405'te doğrulandı:
+alt bağlamlar, üst bağlamın video kimliği henüz boşken kopyalanıyordu. Kapsam artık yalnız o andaki değeri
+kopyalamaz; kart ailesindeki kaynak düğümle bağlantısını tutar. Sonradan gelen kimlik önceden hazırlanmış
+metinden okunabilir. Yeni kart girişinde önceki kartın zinciri kesilir; aynı şablon farklı kartları birleştirmez.
+Belirsiz/çelişkili kimlikte kayıt düğmesi gizlenir. Oluşturucu için cep.14 açılış düzeltmesi korunur.
+
+219 regresyon kontrolü geçti. Android UI/ART kontrolleri de kimlikten önce üretilen alt bağlam ve metni
+sınayacak biçimde güncellendi. Yerel Android 15 / x86_64 / 720×1280 testinde gerçek YouTube ana sayfasında
+farklı videolarda saatler görüldü; altı kaydırma sonrası ilk videoya dönüşte saat kaldı. Arama sonuçlarında da
+saat doğrulandı. Bu deneme, orijinal APK'dan 96 varsayılan yama ve Watch later ile üretilen APK'nın kimlik
+sınıflarına güncel kaynak derlemesi yerleştirilerek, yalnız yerel test anahtarıyla yapıldı. YouTube APK'sı
+yayımlanmaz. Oturum açılmadı; gerçek hesapta kayıt ve fiziksel telefon davranışı henüz doğrulanmadı.
+
+Yayın APK'sı ve gömülü paket, yeni kaynaklardan Actions tarafından yeniden derlenir; Android yayın kapısı
+başarılı olmadan Release oluşturulmaz. Sürüm sonuçları yayın tamamlandıktan sonra bu sayfaya eklenir.
+
 ## Doğrulanan güncel sürüm: 1.0.16
 
 - [Cep Patcher 1.0.16 APK doğrudan indirme](https://github.com/b061raporlama-hash/morphe-patches_test/releases/download/cep-v1.0.16/cep-patcher.apk); [Release ve karşılık gelen kaynak](https://github.com/b061raporlama-hash/morphe-patches_test/releases/tag/cep-v1.0.16).
@@ -9,7 +27,7 @@
 - 125 Watch later regresyon kontrolü ve 419 yönetici birim testi geçti. Kotlin testlerinde 7 geçti; YouTube Music APK'sı isteyen 5 test atlandı. Release lint: 0 hata, 124 uyarı. Eski Morphe test paketleri ile Cep paketleri yan yana kuruldu; gerçek imzalı Cep Patcher da Android 15'te başlatıldı.
 - APK 30.138.109 bayt; imzalama sertifikası önceki sürümle aynı. Gömülü `.mpp` yayımlanan paketle eşleşiyor. Tokensız, herkese açık indirme SHA-256'sı test edilen dosyayla aynı: `c0e5ff05e814067fc2d589d7eff242aadd5a37e0c598cd48d55f1d495e1a3f3b`. Güncelleme kaynağı `1.47.0-cep.16` ve değişmez sürüm bağlantısını döndürüyor. Test DEX'leri release APK'ya, APK/anahtar dosyaları kaynak arşivine dahil değil.
 - **Cep Patcher'ı verilerini silmeden güncelleyin**, Cep Patches sürümünün `1.47.0-cep.16` olduğunu kontrol edin. **Orijinal 21.20.405 APK'sını**, **Watch later shortcuts** seçili şekilde yeniden yamalayın ve yeni Cep YouTube'u mevcut kurulumun üzerine kurun. Önceden yamalanmış cep.14 APK'sını girdi olarak kullanmayın. Yönetici güncellemesi kurulu YouTube'u kendiliğinden düzeltmez.
-- Bu sürümde gerçek YouTube'u Android'de başlatma testi tamamlanamadı: yerel Windows emülatörü boot işlemini bitirmedi; daha önce verilen orijinal APK da belirtilen İndirilenler konumunda bulunmadı. Yerelde kalan önceki gerçek YouTube test APK'sının kurucusuna üretimdeki düzeltme işlevi uygulanıp son DEX içeriği kontrol edildi; bu bir uygulama açılış testi değildir. ART ve arayüz kontrolleri test DEX'i/sentetik kartlar kullanır. Fiziksel telefonda gerçek YouTube açılışı, gezinirken saatlerin kalıcılığı, gerçek hesapta kayıt ve root/Shizuku davranışı henüz doğrulanmadı.
+- İlk yayın sırasında gerçek YouTube açılışı yerel emülatör ve eksik APK nedeniyle tamamlanamamıştı. Orijinal dosya sonradan yeniden sağlandı; 96 varsayılan yama + Watch later işlemi başarılı oldu, 12 DEX / 57.884 sınıf SDK kontrolünden geçti. Resmî emülatör 36.1.9 ile Android 15'te YouTube ana ekranı ve gerçek arama videoları açıldı, cep.14 `VerifyError` hatası tekrarlanmadı. Saatlerin eksikliği ise bu çalışma zamanında ayrıca doğrulandı; üstteki yeni düzeltme kimlikten önce kopyalanan alt bağlamları ele alır. Fiziksel telefon, gerçek hesapta kayıt ve root/Shizuku davranışı doğrulanmadı.
 
 ## cep.14 için bilinen açılış hatası
 

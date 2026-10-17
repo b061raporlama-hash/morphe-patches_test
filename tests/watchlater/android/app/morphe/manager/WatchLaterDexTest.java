@@ -61,10 +61,13 @@ public class WatchLaterDexTest {
         assertNotNull(scope);
         for (int i = 0; i < 40; i++) {
             Object copyBuilder = constructor.newInstance(root);
-            assertSame(scope, ((WatchLaterScopeCarrier) copyBuilder).patch_getWatchLaterScope());
+            Object builderNode = ((WatchLaterScopeCarrier) copyBuilder).patch_getWatchLaterScope();
+            assertNotNull(builderNode);
+            assertNotSame(((WatchLaterScopeCarrier) root).patch_getWatchLaterScope(), builderNode);
+            assertEquals("abcdefghijk", identity.resolve(copyBuilder, path).videoId());
             assertEquals(1023, builder.getField("flags").getShort(copyBuilder));
             Object copiedContext = build.invoke(copyBuilder);
-            assertSame(scope, ((WatchLaterScopeCarrier) copiedContext).patch_getWatchLaterScope());
+            assertNotSame(builderNode, ((WatchLaterScopeCarrier) copiedContext).patch_getWatchLaterScope());
             assertSame(payload, payloadField.get(copiedContext));
             assertEquals("abcdefghijk", identity.resolve(copiedContext, path).videoId());
             root = copiedContext;
@@ -77,5 +80,13 @@ public class WatchLaterDexTest {
         Object separate = build.invoke(constructor.newInstance(unbound));
         assertNotSame(scope, ((WatchLaterScopeCarrier) separate).patch_getWatchLaterScope());
         assertEquals("12345678901", identity.resolve(separate, path).videoId());
+        Object pending = context.getConstructor().newInstance();
+        identity.resolve(pending, path); // Seed the path: this minimal DEX fixture has no ContextInterface.
+        Object prebuilt = build.invoke(constructor.newInstance(pending));
+        var delayed = identity.resolve(prebuilt, path);
+        assertNull(delayed.videoId());
+        identity.observe(pending, path, "abc_def-123");
+        assertEquals("A late parent ID reaches a child made by the actual DEX transformation",
+                "abc_def-123", delayed.videoId());
     }
 }

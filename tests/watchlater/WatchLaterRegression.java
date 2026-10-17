@@ -22,6 +22,10 @@ class WatchLaterRegression {
                     package app.morphe.extension.shared;
                     public class StringRef { public static String str(String s) { return s; } }
                     """,
+                "app/morphe/extension/shared/patches/components/ContextInterface.java", """
+                    package app.morphe.extension.shared.patches.components;
+                    public interface ContextInterface { StringBuilder patch_getPathBuilder(); }
+                    """,
                 "app/morphe/extension/shared/Logger.java", """
                     package app.morphe.extension.shared;
                     import java.util.function.Supplier;
@@ -79,10 +83,15 @@ class WatchLaterRegression {
                     import app.morphe.extension.youtube.patches.watchlater.WatchLaterScopeCarrier;
                     import app.morphe.extension.youtube.patches.utils.requests.SaveToWatchLaterRequest;
                     public class Scenario {
-                        static final class Carrier implements WatchLaterScopeCarrier {
+                        static class Carrier implements WatchLaterScopeCarrier {
                             Object scope;
                             public Object patch_getWatchLaterScope() { return scope; }
                             public void patch_setWatchLaterScope(Object value) { scope = value; }
+                        }
+                        static final class TypedCarrier extends Carrier implements app.morphe.extension.shared.patches.components.ContextInterface {
+                            final StringBuilder path;
+                            TypedCarrier(String path) { this.path = new StringBuilder(path); }
+                            public StringBuilder patch_getPathBuilder() { return path; }
                         }
                         static int assertions;
                         static final List<Boolean> results = new ArrayList<>();
@@ -125,7 +134,7 @@ class WatchLaterRegression {
                             for (int i = 0; i < 40; i++) {
                                 check(String.format("%011d", i).equals(cards.resolve(children.get(i), child).videoId()));
                             }
-                            check(cards.resolve(new Carrier(), child) == null); // No hash-only guessing.
+                            check(cards.resolve(new Carrier(), child).videoId() == null); // No hash-only guessing.
                             Carrier late = new Carrier(), lateChild = new Carrier();
                             cards.observe(late, card, null);
                             WatchLaterCardIdentity.copy(late, lateChild);
@@ -152,6 +161,46 @@ class WatchLaterRegression {
                             check(cards.resolve(children.get(0), child).videoId() == null);
                             check(cards.resolve(reused, "feed|shorts_shelf.e|shared-template|TextType|") == null);
                             check(cards.resolve(reused, "feed|video_lockup_with_attachment.eml-fe|other-template|TextType|") == null);
+                            // Real 21.20.405 callbacks start at CellType, after copying the
+                            // preceding context. No callback is made at the bare card prefix.
+                            String cellRoot = card + "CellType|";
+                            String cellText = cellRoot + "video_lockup.eml-fe|metadata|TextType|";
+                            Carrier previous = new TypedCarrier(cellRoot);
+                            cards.observe(previous, cellRoot, "00000000099");
+                            List<WatchLaterCardIdentity.Scope> cellScopes = new ArrayList<>();
+                            for (int i = 0; i < 30; i++) {
+                                Carrier entry = new TypedCarrier(card), next = new TypedCarrier(cellRoot);
+                                Carrier builder = new Carrier(), text = new TypedCarrier(cellText);
+                                WatchLaterCardIdentity.copy(previous, entry);
+                                WatchLaterCardIdentity.copy(entry, builder);
+                                WatchLaterCardIdentity.copy(builder, next);
+                                String video = String.format("%011d", i + 100);
+                                WatchLaterCardIdentity.copy(next, text);
+                                cards.observe(text, cellText, null);
+                                var scope = cards.resolve(text, cellText);
+                                check(scope.videoId() == null); // New card cannot inherit the previous video's ID.
+                                cards.observe(next, cellRoot, video); // Parent is observed AFTER its child was copied.
+                                check(video.equals(scope.videoId()));
+                                cellScopes.add(scope);
+                                previous = next;
+                            }
+                            for (int i = 0; i < 30; i++) {
+                                check(String.format("%011d", i + 100).equals(cellScopes.get(i).videoId()));
+                            }
+                            Carrier entry = new TypedCarrier(card), rootCell = new TypedCarrier(cellRoot), builderCell = new Carrier();
+                            WatchLaterCardIdentity.copy(entry, builderCell);
+                            WatchLaterCardIdentity.copy(builderCell, rootCell);
+                            Carrier branch = new TypedCarrier(cellRoot), leaf = new TypedCarrier(cellText);
+                            WatchLaterCardIdentity.copy(rootCell, branch);
+                            WatchLaterCardIdentity.copy(branch, leaf);
+                            var prebuilt = cards.resolve(leaf, cellText);
+                            check(prebuilt.videoId() == null);
+                            cards.observe(branch, cellRoot, "abcdefghijk"); // Sibling root callback precedes parent callback.
+                            check("abcdefghijk".equals(prebuilt.videoId()));
+                            cards.observe(rootCell, cellRoot, "abcdefghijk");
+                            check("abcdefghijk".equals(prebuilt.videoId()));
+                            cards.observe(branch, cellText, null, true);
+                            check(prebuilt.videoId() == null); // Ambiguity invalidates the entire card family.
                             save("abcdefghijk"); save("abcdefghijk"); save("12345678901");
                             check(Utils.workers.size() == 2);
                             Utils.drain();
